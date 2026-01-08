@@ -1,0 +1,26 @@
+### GET products
+GET http://localhost:3000/api/products
+
+### GET single products
+GET http://localhost:3000/api/products/1
+
+### Post product
+Post http://localhost:3000/api/products
+Content-Type: application/json
+
+{
+    "name": "new product",
+    "price": 180
+}
+
+### Update product
+PUT http://localhost:3000/api/products/1
+Content-Type: application/json
+
+{
+    "name": "updated product",
+    "price": 80
+}
+
+### Update product
+DELETE http://localhost:3000/api/products/1
