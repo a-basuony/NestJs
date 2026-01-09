@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CreateProductDto } from './dtos/create-product.dto';
 import { UpdateProductDto } from './dtos/update-product.dto';
@@ -28,7 +29,11 @@ export class ProductsController {
 
   // POST : ~/api/products
   @Post()
-  public CreateProduct(@Body() body: CreateProductDto) {
+  public CreateProduct(
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    body: CreateProductDto,
+  ) {
+    // Validation happens before this code executes
     const newProduct = {
       id: this.products.length + 1,
       name: body.name,
@@ -57,7 +62,8 @@ export class ProductsController {
   @Put(':id')
   public updateProduct(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateProductDto,
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    body: UpdateProductDto,
   ) {
     const product = this.products.find((p) => p.id === id);
     if (!product) {

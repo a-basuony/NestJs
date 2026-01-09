@@ -1387,3 +1387,361 @@ DELETE http://localhost:5000/api/products/1
 ---
 
 **Thank you, and see you in the next lesson!**
+**Lecture Summary: Input Validation with class-validator in NestJS**
+
+---
+
+### **1. Introduction & Problem Statement**
+
+- Greeting: "السلام عليكم واهلا وسهلا بكم"
+- **Problem**: Our POST endpoint accepts invalid data:
+  - Empty titles
+  - Negative prices
+  - Extra properties we don't expect
+- **Solution**: Implement input validation using `class-validator` and `ValidationPipe`
+
+---
+
+### **2. Installing Required Packages**
+
+```bash
+npm install class-validator class-transformer
+```
+
+- `class-validator`: Provides decorators for validation rules
+- `class-transformer`: Transforms plain objects to class instances
+
+---
+
+### **3. Setting Up Validation in DTOs**
+
+**Update `create-product.dto.ts`:**
+
+```typescript
+import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
+
+export class CreateProductDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(2)
+  @MaxLength(150)
+  title: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+}
+```
+
+**Key Decorators Used:**
+
+1. `@IsString()` - Must be a string
+2. `@IsNotEmpty()` - Cannot be empty
+3. `@MinLength(2)` - Minimum 2 characters
+4. `@MaxLength(150)` - Maximum 150 characters
+5. `@IsNumber()` - Must be a number
+6. `@Min(0)` - Minimum value of 0
+
+---
+
+### **4. Applying ValidationPipe in Controller**
+
+**Method 1: Apply to specific endpoint**
+
+```typescript
+import { ValidationPipe } from '@nestjs/common';
+
+@Post()
+createNewProduct(@Body(new ValidationPipe()) body: CreateProductDto) {
+  // Validation happens before this code executes
+  return this.productsService.create(body);
+}
+```
+
+**Method 2: Apply globally (Recommended)**
+In `main.ts`:
+
+```typescript
+import { ValidationPipe } from '@nestjs/common';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Global validation pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  await app.listen(3000);
+}
+```
+
+---
+
+### **5. Global ValidationPipe Configuration**
+
+**Options Explained:**
+
+```typescript
+new ValidationPipe({
+  whitelist: true, // Remove properties not in DTO
+  forbidNonWhitelisted: true, // Throw error if extra properties exist
+  transform: true, // Transform payloads to DTO instances
+  disableErrorMessages: false, // Show detailed error messages
+});
+```
+
+**Why Global is Better:**
+
+1. Applies to all endpoints automatically
+2. Consistent validation across entire application
+3. Less code duplication
+4. Easier to maintain
+
+---
+
+### **6. Testing Validation**
+
+**Test Case 1: Empty Title**
+
+```http
+POST http://localhost:5000/api/products
+Content-Type: application/json
+
+{
+  "title": "",
+  "price": 100
+}
+```
+
+**Response:** 400 Bad Request
+
+```json
+{
+  "statusCode": 400,
+  "message": [
+    "title should not be empty",
+    "title must be longer than or equal to 2 characters"
+  ],
+  "error": "Bad Request"
+}
+```
+
+**Test Case 2: Negative Price**
+
+```http
+POST http://localhost:5000/api/products
+Content-Type: application/json
+
+{
+  "title": "Product",
+  "price": -1
+}
+```
+
+**Response:** 400 Bad Request
+
+```json
+{
+  "statusCode": 400,
+  "message": ["price must not be less than 0"],
+  "error": "Bad Request"
+}
+```
+
+**Test Case 3: Extra Property**
+
+```http
+POST http://localhost:5000/api/products
+Content-Type: application/json
+
+{
+  "title": "Product",
+  "price": 100,
+  "rating": 5
+}
+```
+
+**Response:** 400 Bad Request (with `forbidNonWhitelisted: true`)
+
+```json
+{
+  "statusCode": 400,
+  "message": ["property rating should not exist"],
+  "error": "Bad Request"
+}
+```
+
+---
+
+### **7. Update DTO with Optional Fields**
+
+**For PATCH/PUT endpoints (update-product.dto.ts):**
+
+```typescript
+import {
+  IsString,
+  IsNumber,
+  Min,
+  IsOptional,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
+
+export class UpdateProductDto {
+  @IsString()
+  @IsOptional()
+  @MinLength(2)
+  @MaxLength(150)
+  title?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number;
+}
+```
+
+**Key Points:**
+
+- `@IsOptional()` makes the field optional
+- Fields can be undefined
+- Validation only applies if field is provided
+
+---
+
+### **8. Using @Length Decorator**
+
+**Alternative to @MinLength/@MaxLength:**
+
+```typescript
+@Length(2, 150)  // Combines min and max length
+title: string;
+```
+
+**Benefits:**
+
+- Single decorator instead of two
+- Cleaner code
+- Same functionality
+
+**Choose based on preference:**
+
+- `@Length(2, 150)` - Single decorator
+- `@MinLength(2) @MaxLength(150)` - Two decorators (more explicit)
+
+---
+
+### **9. Validation Flow**
+
+**What happens when request arrives:**
+
+1. Request reaches NestJS server
+2. Global `ValidationPipe` intercepts request
+3. Transforms JSON to DTO class instance
+4. Validates against decorator rules
+5. If validation fails:
+   - Throws `BadRequestException`
+   - Returns 400 with error messages
+   - **Route handler never executes**
+6. If validation passes:
+   - Cleaned data passed to route handler
+   - Route handler executes normally
+
+---
+
+### **10. Complete Example**
+
+**main.ts with Global Validation:**
+
+```typescript
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Global validation configuration
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Remove extra properties
+      forbidNonWhitelisted: true, // Error on extra properties
+      transform: true, // Transform to DTO instances
+      transformOptions: {
+        enableImplicitConversion: true, // Auto-convert types
+      },
+    }),
+  );
+
+  await app.listen(3000);
+  console.log(`Server running on http://localhost:3000`);
+}
+```
+
+**Product DTO:**
+
+```typescript
+import { IsString, IsNumber, IsNotEmpty, Min, Length } from 'class-validator';
+
+export class CreateProductDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 150)
+  title: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+}
+```
+
+**Product Controller:**
+
+```typescript
+@Controller('products')
+export class ProductController {
+  @Post()
+  create(@Body() createProductDto: CreateProductDto) {
+    // No need for ValidationPipe here - it's global
+    // Data is already validated and transformed
+    return this.productsService.create(createProductDto);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
+    return this.productsService.update(id, updateProductDto);
+  }
+}
+```
+
+---
+
+### **11. Key Takeaways**
+
+1. **Install packages**: `class-validator` and `class-transformer`
+2. **Create DTO classes**: Define validation rules with decorators
+3. **Use global ValidationPipe**: Configure in `main.ts`
+4. **Configure options**: `whitelist`, `forbidNonWhitelisted`, `transform`
+5. **Handle optional fields**: Use `@IsOptional()` for PATCH endpoints
+6. **Validation prevents bugs**: Invalid data never reaches business logic
+7. **Clean code**: Validation rules are declarative and readable
+
+---
+
+### **12. Common Validation Decorators**
+
+- `@IsString()`, `@IsNumber()`, `@IsBoolean()`, `@IsArray()`
+- `@IsNotEmpty()`, `@IsOptional()`
+- `@Min()`, `@Max()`, `@MinLength()`, `@MaxLength()`, `@Length()`
+- `@IsEmail()`, `@IsUrl()`, `@IsDate()`
+- `@Matches()` - Regular expression validation
+- `@IsEnum()` - Validate against enum values
+- `@IsObject()`, `@IsInstance()` - Object validation
+
+---
+
+**Thank you, and see you in the next lesson!**
