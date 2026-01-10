@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dtos/create-product.dto';
 import { UpdateProductDto } from './dtos/update-product.dto';
 
@@ -8,6 +8,7 @@ type ProductType = {
   price: number;
 };
 
+@Injectable()
 export class ProductsService {
   private products: ProductType[] = [
     { id: 1, name: 'Product 1', price: 100 },
@@ -54,7 +55,7 @@ export class ProductsService {
     return product;
   }
 
-  public deleteProduct( id: number) {
+  public deleteProduct(id: number) {
     const product = this.products.find((p) => p.id === id);
     if (!product) {
       throw new NotFoundException('Product not found', 'Delete Operation');
