@@ -3690,3 +3690,535 @@ export class UsersService {
 4. **Use forwardRef()** only when truly needed
 
 **You now understand ALL types of Dependency Injection in NestJS!** 🎉
+
+# **Complete Database Integration with TypeORM in NestJS**
+
+## **📌 SUMMARY: DATABASE CONNECTION & TYPEORM**
+
+### **1. What You've Learned:**
+
+You learned how to connect NestJS to a **PostgreSQL database** using **TypeORM**, an ORM (Object-Relational Mapper) that lets you write TypeScript code instead of SQL.
+
+---
+
+## **📌 2. THREE KEY CONCEPTS:**
+
+### **Concept 1: TypeORM - The Translator**
+
+```
+Your TypeScript Code → TypeORM → SQL → PostgreSQL Database
+                        (Translates)    (Executes)
+```
+
+### **Concept 2: Entities - The Blueprints**
+
+```typescript
+// product.entity.ts - Blueprint for database table
+@Entity('products') // Maps to 'products' table
+export class Product {
+  @PrimaryGeneratedColumn() // Auto-increment ID
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 }) // Database column
+  title: string;
+
+  @Column({ type: 'float' }) // Float type for price
+  price: number;
+
+  @CreateDateColumn() // Auto-set on create
+  createdAt: Date;
+
+  @UpdateDateColumn() // Auto-update on change
+  updatedAt: Date;
+}
+```
+
+### **Concept 3: Repository - The Data Manager**
+
+```typescript
+// In service - Repository handles all database operations
+constructor(
+  @InjectRepository(Product)  // Inject repository
+  private productRepository: Repository<Product>
+) {}
+
+// Repository methods:
+// .find() - Get all records
+// .findOne() - Get single record
+// .create() - Create new record
+// .save() - Save/update record
+// .remove() - Delete record
+```
+
+---
+
+## **📌 3. STEP-BY-STEP IMPLEMENTATION:**
+
+### **Step 1: Install Required Packages**
+
+```bash
+npm install @nestjs/typeorm typeorm pg
+```
+
+- `@nestjs/typeorm` - NestJS integration for TypeORM
+- `typeorm` - The ORM itself
+- `pg` - PostgreSQL driver
+
+### **Step 2: Configure Database Connection**
+
+```typescript
+// app.module.ts
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Product } from './products/product.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres', // Database type
+      host: 'localhost', // Database host
+      port: 5432, // PostgreSQL default port
+      username: 'postgres', // Your username
+      password: 'your_password', // Your password
+      database: 'nest_db', // Database name
+      entities: [Product], // Your entities
+      synchronize: true, // Auto-create tables (DANGEROUS in production!)
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+**⚠️ WARNING:** `synchronize: true` is **DANGEROUS** in production as it can delete data. Use migrations instead.
+
+### **Step 3: Create Entity**
+
+```typescript
+// product.entity.ts
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+@Entity('products') // Table name
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 })
+  title: string;
+
+  @Column({ type: 'text', nullable: true }) // Optional description
+  description?: string;
+
+  @Column({ type: 'float' })
+  price: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### **Step 4: Configure Feature Module**
+
+```typescript
+// products.module.ts
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Product } from './product.entity';
+import { ProductsService } from './products.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Product])], // ⭐ Register entity
+  providers: [ProductsService],
+  controllers: [ProductsController],
+})
+export class ProductsModule {}
+```
+
+### **Step 5: Inject Repository in Service**
+
+```typescript
+// products.service.ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Product } from './product.entity';
+
+@Injectable()
+export class ProductsService {
+  constructor(
+    @InjectRepository(Product) // ⭐ Inject repository
+    private productRepository: Repository<Product>,
+  ) {}
+}
+```
+
+### **Step 6: Implement CRUD Operations**
+
+```typescript
+// products.service.ts - CRUD methods
+@Injectable()
+export class ProductsService {
+  // CREATE
+  async create(createProductDto: CreateProductDto) {
+    const product = this.productRepository.create(createProductDto);
+    return await this.productRepository.save(product);
+  }
+
+  // READ ALL
+  async findAll() {
+    return await this.productRepository.find();
+  }
+
+  // READ ONE
+  async findOne(id: number) {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
+  }
+
+  // UPDATE
+  async update(id: number, updateProductDto: UpdateProductDto) {
+    const product = await this.findOne(id); // Reuse findOne for validation
+
+    // Update only provided fields
+    Object.assign(product, updateProductDto);
+
+    return await this.productRepository.save(product);
+  }
+
+  // DELETE
+  async remove(id: number) {
+    const product = await this.findOne(id); // Reuse findOne for validation
+    await this.productRepository.remove(product);
+    return { message: `Product with ID ${id} deleted successfully` };
+  }
+}
+```
+
+---
+
+## **📌 4. COMPLETE WORKING EXAMPLE:**
+
+### **Entity (product.entity.ts):**
+
+```typescript
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+@Entity('products')
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 })
+  title: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  @Column({ type: 'float' })
+  price: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### **DTOs (Data Transfer Objects):**
+
+```typescript
+// create-product.dto.ts
+export class CreateProductDto {
+  @IsString()
+  @Length(2, 150)
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+}
+
+// update-product.dto.ts
+export class UpdateProductDto {
+  @IsString()
+  @Length(2, 150)
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number;
+}
+```
+
+### **Service (products.service.ts):**
+
+```typescript
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Product } from './product.entity';
+import { CreateProductDto } from './dtos/create-product.dto';
+import { UpdateProductDto } from './dtos/update-product.dto';
+
+@Injectable()
+export class ProductsService {
+  constructor(
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
+  ) {}
+
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const product = this.productRepository.create(createProductDto);
+    return await this.productRepository.save(product);
+  }
+
+  async findAll(): Promise<Product[]> {
+    return await this.productRepository.find();
+  }
+
+  async findOne(id: number): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
+  }
+
+  async update(
+    id: number,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
+    const product = await this.findOne(id);
+    Object.assign(product, updateProductDto);
+    return await this.productRepository.save(product);
+  }
+
+  async remove(id: number): Promise<{ message: string }> {
+    const product = await this.findOne(id);
+    await this.productRepository.remove(product);
+    return { message: `Product with ID ${id} deleted successfully` };
+  }
+}
+```
+
+### **Controller (products.controller.ts):**
+
+```typescript
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { ProductsService } from './products.service';
+import { CreateProductDto } from './dtos/create-product.dto';
+import { UpdateProductDto } from './dtos/update-product.dto';
+
+@Controller('products')
+export class ProductsController {
+  constructor(private readonly productsService: ProductsService) {}
+
+  @Post()
+  create(@Body() createProductDto: CreateProductDto) {
+    return this.productsService.create(createProductDto);
+  }
+
+  @Get()
+  findAll() {
+    return this.productsService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.findOne(id);
+  }
+
+  @Put(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    return this.productsService.update(id, updateProductDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.remove(id);
+  }
+}
+```
+
+---
+
+## **📌 5. DATABASE COLUMN DECORATORS:**
+
+### **Common Column Decorators:**
+
+```typescript
+@PrimaryGeneratedColumn()          // Auto-increment primary key
+@PrimaryColumn()                  // Manual primary key
+
+@Column()                         // Basic column
+@Column({ type: 'varchar' })      // Specify type
+@Column({ length: 150 })          // Max length
+@Column({ nullable: true })       // Allow NULL
+@Column({ unique: true })         // Unique constraint
+@Column({ default: 'default' })   // Default value
+
+@CreateDateColumn()               // Auto-set on create
+@UpdateDateColumn()               // Auto-update on change
+@DeleteDateColumn()               // Soft delete
+```
+
+### **Column Types:**
+
+```typescript
+@Column({ type: 'varchar' })      // String
+@Column({ type: 'text' })         // Long text
+@Column({ type: 'int' })          // Integer
+@Column({ type: 'float' })        // Floating point
+@Column({ type: 'decimal' })      // Decimal
+@Column({ type: 'boolean' })      // Boolean
+@Column({ type: 'date' })         // Date
+@Column({ type: 'timestamp' })    // Timestamp
+@Column({ type: 'json' })         // JSON data
+```
+
+---
+
+## **📌 6. TESTING WITH REST CLIENT:**
+
+### **Test Requests (.http file):**
+
+```http
+### CREATE Product
+POST http://localhost:3000/products
+Content-Type: application/json
+
+{
+  "title": "Laptop",
+  "description": "Gaming laptop with RTX 3080",
+  "price": 1500
+}
+
+### GET All Products
+GET http://localhost:3000/products
+
+### GET Single Product
+GET http://localhost:3000/products/1
+
+### UPDATE Product
+PUT http://localhost:3000/products/1
+Content-Type: application/json
+
+{
+  "price": 1400
+}
+
+### DELETE Product
+DELETE http://localhost:3000/products/1
+```
+
+---
+
+## **📌 7. SECURITY WARNINGS:**
+
+### **⚠️ NEVER DO THIS IN PRODUCTION:**
+
+```typescript
+// ❌ DANGEROUS - Can delete data!
+synchronize: true;
+
+// ✅ SAFER - Use migrations
+synchronize: false;
+```
+
+### **⚠️ NEVER HARDCODE PASSWORDS:**
+
+```typescript
+// ❌ BAD - Password in code
+password: 'mysecret123';
+
+// ✅ GOOD - Use environment variables
+password: process.env.DB_PASSWORD;
+```
+
+---
+
+## **📌 8. COMMON ERRORS & SOLUTIONS:**
+
+### \*\*Error: "Cannot find module 'pg'"`
+
+```bash
+# Solution: Install PostgreSQL driver
+npm install pg
+```
+
+### **Error: "Connection refused"**
+
+```bash
+# Solution: Check if PostgreSQL is running
+# 1. Open pgAdmin
+# 2. Check connection
+# 3. Verify port (default: 5432)
+```
+
+### **Error: "Role 'postgres' does not exist"**
+
+```bash
+# Solution: Create database user
+# In pgAdmin: Create user/database
+```
+
+---
+
+## **📌 9. NEXT STEPS TO LEARN:**
+
+1. **Environment Variables** (`.env` file)
+2. **Database Migrations** (Version control for database)
+3. **Relationships** (One-to-Many, Many-to-Many)
+4. **Query Building** (Complex queries with TypeORM)
+5. **Transactions** (Multiple operations as one unit)
+
+---
+
+## **🎯 KEY TAKEAWAYS:**
+
+✅ **TypeORM** translates TypeScript → SQL  
+✅ **Entities** define database tables  
+✅ **Repository** handles database operations  
+✅ **Decorators** define column properties  
+✅ **Never use** `synchronize: true` in production  
+✅ **Always use** environment variables for passwords
+
+**You now have a working database-connected NestJS application!** 🎉
