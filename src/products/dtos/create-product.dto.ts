@@ -1,6 +1,7 @@
 import {
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   Length,
   Max,
@@ -15,7 +16,11 @@ export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
   @Length(2, 50)
-  name: string;
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @IsNumber()
   @IsNotEmpty()

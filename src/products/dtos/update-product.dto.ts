@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   Length,
+  Min,
 } from 'class-validator';
 
 export class UpdateProductDto {
@@ -11,9 +12,14 @@ export class UpdateProductDto {
   @IsNotEmpty({ message: 'Name is required' })
   @Length(2, 50)
   @IsOptional()
-  name?: string;
+  title?: string;
+
+  @IsString({ message: 'Description must be a string' })
+  @IsOptional()
+  description?: string;
 
   @IsNumber()
+  @Min(0)
   @IsNotEmpty({ message: 'Price is required' })
   @IsOptional()
   price?: number;
