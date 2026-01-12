@@ -9,8 +9,9 @@ Post http://localhost:3000/api/products
 Content-Type: application/json
 
 {
-    "name": "new product",
-    "price": 180
+    "title": "laptop",
+    "description": "new laptop",
+    "price": 120
 }
 
 ### Update product
@@ -18,7 +19,7 @@ PUT http://localhost:3000/api/products/1
 Content-Type: application/json
 
 {
-    "name": "updated product",
+    "title": "new product updated",
     "price": 80
 }
 

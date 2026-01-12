@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -16,25 +15,26 @@ import { ProductsService } from './products.service';
 
 @Controller('api/products')
 export class ProductsController {
-  private productsService: ProductsService = new ProductsService();
+  constructor(private readonly productsService: ProductsService) {}
+
   // POST : ~/api/products
   @Post()
   public CreateProduct(
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     body: CreateProductDto,
   ) {
-    return this.productsService.CreateProduct(body);
+    return this.productsService.create(body);
   }
 
   // GET : ~/api/products
   @Get()
   public GetAllProducts() {
-    return this.productsService.GetAllProducts();
+    return this.productsService.findAll();
   }
 
   @Get(':id')
   public GetProductById(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.GetProductById(id);
+    return this.productsService.findOne(id);
   }
 
   @Put(':id')
@@ -43,11 +43,11 @@ export class ProductsController {
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     body: UpdateProductDto,
   ) {
-    return this.productsService.updateProduct(id, body);
+    return this.productsService.update(id, body);
   }
 
   @Delete(':id')
   public deleteProduct(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.deleteProduct(id);
+    return this.productsService.delete(id);
   }
 }

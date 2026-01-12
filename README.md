@@ -2038,3 +2038,2187 @@ Result: price converted to number 999, controller executes
 
 This validation pipeline ensures that **only clean, validated data** reaches your business logic, preventing many common bugs and security issues.
 **Thank you, and see you in the next lesson!**
+
+**Lecture Summary: Services in NestJS**
+
+---
+
+### **1. Introduction & Problem Statement**
+
+- Greeting: "السلام عليهم واهلا وسهلا بكم"
+- **Topic:** Services in NestJS
+- **Current Problem:** All business logic is in controllers
+- **Ideal Solution:** Separate business logic into services
+
+---
+
+### **2. Controller vs Service Responsibilities**
+
+**Controller Responsibility:**
+
+- Handle HTTP requests and responses
+- Route incoming requests to appropriate handlers
+- Return responses to clients
+- **Lightweight** - minimal logic
+
+**Service Responsibility:**
+
+- Contain **business logic**
+- Handle data operations
+- Interact with data sources (database, APIs, memory)
+- **Heavy logic** - complex operations
+
+**Current Bad Practice:**
+
+```typescript
+// ProductController (BAD - mixing concerns)
+@Post()
+createProduct(@Body() body: CreateProductDto) {
+  // Business logic should NOT be here
+  const newProduct = {
+    id: this.products.length + 1,
+    ...body
+  };
+  this.products.push(newProduct);
+  return newProduct;
+}
+```
+
+---
+
+### **3. Creating a Service**
+
+**Step 1: Create service file**
+
+- Location: `src/product/product.service.ts`
+- Naming convention: `<name>.service.ts`
+
+**Step 2: Create service class**
+
+```typescript
+// product.service.ts
+export class ProductService {
+  private products: ProductType[] = [
+    { id: 1, title: 'Laptop', price: 400 },
+    { id: 2, title: 'Phone', price: 300 },
+  ];
+
+  create(createProductDto: CreateProductDto) {
+    const newProduct = {
+      id: this.products.length + 1,
+      ...createProductDto,
+    };
+    this.products.push(newProduct);
+    return newProduct;
+  }
+
+  findAll() {
+    return this.products;
+  }
+
+  findOne(id: number) {
+    const product = this.products.find((p) => p.id === id);
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
+  }
+
+  update(id: number, updateProductDto: UpdateProductDto) {
+    const productIndex = this.products.findIndex((p) => p.id === id);
+    if (productIndex === -1) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    this.products[productIndex] = {
+      ...this.products[productIndex],
+      ...updateProductDto,
+    };
+    return this.products[productIndex];
+  }
+
+  remove(id: number) {
+    const productIndex = this.products.findIndex((p) => p.id === id);
+    if (productIndex === -1) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    this.products.splice(productIndex, 1);
+    return { message: `Product with ID ${id} deleted` };
+  }
+}
+```
+
+---
+
+### **4. Updated Controller (Clean Version)**
+
+```typescript
+// product.controller.ts
+@Controller('api/products')
+export class ProductController {
+  // BAD PRACTICE (Temporary - will fix in next lesson)
+  private productService = new ProductService();
+
+  @Get()
+  findAll() {
+    return this.productService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.productService.findOne(id);
+  }
+
+  @Post()
+  create(@Body() createProductDto: CreateProductDto) {
+    return this.productService.create(createProductDto);
+  }
+
+  @Put(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    return this.productService.update(id, updateProductDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.productService.remove(id);
+  }
+}
+```
+
+---
+
+### **5. Why This is Still Bad Practice**
+
+**Current Approach:**
+
+```typescript
+private productService = new ProductService();  // BAD!
+```
+
+**Problems:**
+
+1. **Tight Coupling:** Controller creates service instance directly
+2. **Hard to Test:** Can't mock service for unit tests
+3. **No Dependency Injection:** Manual instantiation
+4. **Violates SOLID principles**
+
+**Solution (Coming Next):** **Dependency Injection**
+
+---
+
+### **6. Object-Oriented Programming Relationships**
+
+**Two Types of Class Relationships:**
+
+**1. "Is-A" Relationship (Inheritance)**
+
+```typescript
+class Person {}
+class Student extends Person {} // Student IS-A Person
+```
+
+- Inheritance (`extends`)
+- Student **is a** Person
+- Used for shared behavior
+
+**2. "Has-A" Relationship (Composition)**
+
+```typescript
+class Email {}
+class Account {
+  private email: Email; // Account HAS-A Email
+}
+```
+
+- Composition (class contains another class)
+- Account **has an** Email
+- Used for building complex objects
+
+**Our Controller-Service Relationship:**
+
+```typescript
+class ProductController {
+  private productService: ProductService; // ProductController HAS-A ProductService
+}
+```
+
+- **"Has-A" relationship** (composition)
+- Controller **has a** Service
+- This is correct and proper design
+
+---
+
+### **7. Best Practices Summary**
+
+**Do:**
+
+- Keep controllers **thin** (HTTP handling only)
+- Put business logic in **services**
+- Services handle data operations
+- Controllers delegate to services
+
+**Don't:**
+
+- Put business logic in controllers
+- Create service instances directly in controllers
+- Mix HTTP logic with business logic
+
+**Current Status:**
+
+- ✅ Separated concerns (controller vs service)
+- ❌ Still using manual instantiation (BAD)
+- ⏳ Will fix with Dependency Injection next
+
+---
+
+### **8. Testing the Service Approach**
+
+**Postman Tests:**
+
+1. `GET /api/products` - Returns all products
+2. `GET /api/products/1` - Returns single product
+3. `POST /api/products` - Creates new product
+4. `PUT /api/products/1` - Updates product
+5. `DELETE /api/products/1` - Deletes product
+
+**Validation Still Works:**
+
+- Empty titles → 400 Bad Request
+- Negative prices → 400 Bad Request
+- Invalid IDs → 404 Not Found
+- Extra properties → 400 Bad Request (with `forbidNonWhitelisted`)
+
+---
+
+### **9. What's Next: Dependency Injection**
+
+**Current (BAD):**
+
+```typescript
+private productService = new ProductService();  // Manual creation
+```
+
+**Next Lesson (GOOD):**
+
+```typescript
+constructor(private productService: ProductService) {}  // Dependency Injection
+```
+
+**Benefits of Dependency Injection:**
+
+1. **Loose Coupling:** Classes don't create their dependencies
+2. **Testability:** Easy to mock dependencies
+3. **Reusability:** Services can be shared
+4. **NestJS Built-in:** Framework manages dependencies
+
+---
+
+### **10. Key Takeaways**
+
+1. **Separation of Concerns:** Controllers handle HTTP, Services handle business logic
+2. **Service Creation:** Create `*.service.ts` files in module folders
+3. **Business Logic:** All data operations go in services
+4. **Controller Role:** Only route requests and return responses
+5. **Current Limitation:** Manual service instantiation is bad practice
+6. **OOP Relationships:** Controller **has a** Service (composition)
+7. **Next Step:** Learn Dependency Injection to fix instantiation issue
+
+---
+
+**Next Lesson Preview:** We'll learn about **Dependency Injection** in NestJS to properly inject services into controllers without manual instantiation.
+**Lecture Summary: Dependency Injection in NestJS**
+
+---
+
+## **1. Introduction to Dependency Injection (DI)**
+
+### **Problem Statement**
+
+- When classes directly create instances of other classes, we get **tight coupling**
+- Example: If `User`, `Product`, `Order`, `Review` classes all need to send emails, each creates its own `EmailService` instance
+- This leads to **code duplication**, **hard testing**, and **difficult maintenance**
+
+### **Bad Practice Example**
+
+```typescript
+// BAD - Tight coupling
+class User {
+  private emailService = new EmailService(); // Direct instantiation
+}
+
+class Product {
+  private emailService = new EmailService(); // Another instance
+}
+
+class Order {
+  private emailService = new EmailService(); // Yet another instance
+}
+```
+
+**Problems:**
+
+- 4 separate `EmailService` instances
+- Hard to mock for testing
+- Changes to `EmailService` affect all classes
+- Memory inefficient
+
+---
+
+## **2. Understanding Class Relationships**
+
+### **Two Types of Relationships**
+
+#### **1. "Is-A" Relationship (Inheritance)**
+
+```typescript
+class Person {}
+class Student extends Person {} // Student IS-A Person
+```
+
+- **Inheritance** (`extends`)
+- Used for shared behavior
+- Example: `Student` **is a** `Person`
+
+#### **2. "Has-A" Relationship (Composition)**
+
+```typescript
+class EmailService {}
+class User {
+  private emailService: EmailService; // User HAS-A EmailService
+}
+```
+
+- **Composition** (class contains another class)
+- Example: `User` **has an** `EmailService`
+- This is what we use for services
+
+---
+
+## **3. What is Dependency Injection?**
+
+### **Core Concept**
+
+- **Dependency Injection** is a design pattern
+- Classes **don't create** their dependencies
+- Dependencies are **injected** from outside
+- Creates **loose coupling** between classes
+
+### **Before vs After DI**
+
+**Before (BAD - Tight Coupling):**
+
+```typescript
+class User {
+  private emailService = new EmailService(); // Creates dependency
+}
+```
+
+**After (GOOD - Loose Coupling):**
+
+```typescript
+class User {
+  constructor(private emailService: EmailService) {} // Receives dependency
+}
+```
+
+---
+
+## **4. The DI Container**
+
+### **Concept**
+
+- **DI Container** (or DI Container) is like a "dependency warehouse"
+- Manages all service instances
+- Provides dependencies when needed
+- Ensures **single instance** (Singleton pattern)
+
+### **Visualization**
+
+```
+DI Container (Warehouse)
+├── EmailService (Instance 1)
+├── UserService (Instance 1)
+└── ProductService (Instance 1)
+
+When UserController needs EmailService:
+UserController → DI Container → "Give me EmailService" → Returns existing instance
+```
+
+**Benefits:**
+
+- One instance shared across application
+- Memory efficient
+- Easy to manage
+- Centralized control
+
+---
+
+## **5. Implementing DI in NestJS**
+
+### **Three-Step Process**
+
+#### **Step 1: Mark Service as Injectable**
+
+```typescript
+// product.service.ts
+import { Injectable } from '@nestjs/common';
+
+@Injectable() // THIS IS CRITICAL
+export class ProductService {
+  // Service logic here
+}
+```
+
+- `@Injectable()` decorator tells NestJS this class can be injected
+- Without this, DI won't work
+
+#### **Step 2: Register Service in Module**
+
+```typescript
+// product.module.ts
+import { Module } from '@nestjs/common';
+import { ProductService } from './product.service';
+import { ProductController } from './product.controller';
+
+@Module({
+  providers: [ProductService], // Register service here
+  controllers: [ProductController],
+})
+export class ProductModule {}
+```
+
+- Add service to `providers` array
+- This tells NestJS to manage this service
+
+#### **Step 3: Inject Service in Controller**
+
+```typescript
+// product.controller.ts
+import { Controller } from '@nestjs/common';
+import { ProductService } from './product.service';
+
+@Controller('products')
+export class ProductController {
+  constructor(private readonly productService: ProductService) {}
+  // NestJS automatically injects ProductService
+}
+```
+
+**Alternative Syntax (both work):**
+
+```typescript
+// Option 1: Simplified (Recommended)
+constructor(private readonly productService: ProductService) {}
+
+// Option 2: Explicit
+private readonly productService: ProductService;
+constructor(productService: ProductService) {
+  this.productService = productService;
+}
+```
+
+---
+
+## **6. How NestJS DI Works Internally**
+
+### **The Magic Behind the Scenes**
+
+1. **Request arrives** at `GET /api/products`
+2. **NestJS DI Container** checks which controller handles this route
+3. **Creates instance** of `ProductController`
+4. **Detects** `ProductController` needs `ProductService`
+5. **Checks** DI Container for `ProductService` instance
+6. **If exists**: Returns existing instance (Singleton)
+7. **If not exists**: Creates new instance, stores it, returns it
+8. **Injects** `ProductService` into `ProductController` constructor
+9. **Executes** controller method
+
+### **Single Instance Pattern**
+
+```typescript
+// With DI:
+const controller1 = new ProductController(productService); // Same instance
+const controller2 = new ProductController(productService); // Same instance
+
+// Without DI:
+const controller1 = new ProductController(new ProductService()); // Different
+const controller2 = new ProductController(new ProductService()); // Different
+```
+
+---
+
+## **7. Benefits of Dependency Injection**
+
+### **1. Loose Coupling**
+
+- Classes don't depend on concrete implementations
+- Easy to swap implementations
+- Example: Switch from `EmailService` to `SmsService`
+
+### **2. Testability**
+
+```typescript
+// Easy to mock in tests
+const mockProductService = {
+  findAll: jest.fn().mockReturnValue([]),
+  create: jest.fn(),
+};
+
+const controller = new ProductController(mockProductService);
+```
+
+### **3. Single Responsibility**
+
+- Each class has one job
+- Services handle business logic
+- Controllers handle HTTP
+
+### **4. Code Reusability**
+
+- Services can be injected anywhere
+- No code duplication
+- Consistent instances
+
+### **5. Scalability**
+
+- Easy to add new features
+- Minimal impact on existing code
+- Maintainable large applications
+
+---
+
+## **8. Real-World Example**
+
+### **Without DI (Problem)**
+
+```typescript
+class EmailService {
+  constructor() {
+    console.log('EmailService constructor called');
+  }
+}
+
+class User {
+  private emailService = new EmailService();
+}
+
+class Product {
+  private emailService = new EmailService();
+}
+
+// Usage:
+const user = new User(); // Creates EmailService
+const product = new Product(); // Creates another EmailService
+// Output: "EmailService constructor called" TWICE
+```
+
+### **With DI (Solution)**
+
+```typescript
+// DI Container manages instances
+class DIContainer {
+  private instances = new Map();
+
+  get(className) {
+    if (!this.instances.has(className)) {
+      this.instances.set(className, new className());
+    }
+    return this.instances.get(className);
+  }
+}
+
+// Classes request dependencies
+class User {
+  constructor(emailService) {
+    this.emailService = emailService;
+  }
+}
+
+// Usage:
+const container = new DIContainer();
+const emailService = container.get(EmailService);
+const user = new User(emailService); // Same instance
+const product = new Product(emailService); // Same instance
+// Output: "EmailService constructor called" ONCE
+```
+
+---
+
+## **9. Complete NestJS Implementation**
+
+### **Service (Injectable)**
+
+```typescript
+// product.service.ts
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class ProductService {
+  private products = [{ id: 1, title: 'Laptop', price: 1000 }];
+
+  findAll() {
+    return this.products;
+  }
+}
+```
+
+### **Module (Provider Registration)**
+
+```typescript
+// product.module.ts
+import { Module } from '@nestjs/common';
+import { ProductService } from './product.service';
+import { ProductController } from './product.controller';
+
+@Module({
+  providers: [ProductService], // Register here
+  controllers: [ProductController],
+})
+export class ProductModule {}
+```
+
+### **Controller (Dependency Injection)**
+
+```typescript
+// product.controller.ts
+import { Controller, Get } from '@nestjs/common';
+import { ProductService } from './product.service';
+
+@Controller('products')
+export class ProductController {
+  constructor(private readonly productService: ProductService) {}
+  // 'readonly' prevents accidental reassignment
+
+  @Get()
+  findAll() {
+    return this.productService.findAll();
+  }
+}
+```
+
+---
+
+## **10. Key Takeaways**
+
+### **Golden Rules of DI in NestJS:**
+
+1. **Mark services** with `@Injectable()`
+2. **Register services** in module `providers` array
+3. **Inject dependencies** via constructor
+4. **Use `private readonly`** for clean syntax
+5. **Let NestJS handle** instance management
+
+### **Remember:**
+
+- **DI Container** = Dependency warehouse
+- **Singleton pattern** = One instance shared
+- **Loose coupling** = Easy to test and maintain
+- **NestJS automates** DI completely
+
+### **Why DI Matters:**
+
+- Professional NestJS development requires DI
+- All major frameworks use DI
+- Essential for scalable applications
+- Makes testing and maintenance easier
+
+---
+
+**Next Steps:** Practice implementing DI in your NestJS applications. Start with simple services and gradually add more complex dependencies. **Let me explain in simple terms:**
+
+## **The Problem Without DI:**
+
+Imagine you have 4 friends who all need the same calculator:
+
+- Each friend buys their **own** calculator
+- If calculator needs new features, all 4 need to buy new ones
+- Waste of money (4 calculators instead of 1)
+- Hard to upgrade
+
+## **The Solution With DI:**
+
+- You buy **ONE** calculator
+- Put it in a **"Calculator Box"** (DI Container)
+- Friends **borrow** it when they need it
+- Everyone uses the **same** calculator
+- Easy to upgrade (just replace the one in the box)
+
+## **In NestJS Terms:**
+
+### **1. Service = Calculator**
+
+```typescript
+// Your calculator (does the work)
+@Injectable()
+export class ProductService {
+  getProducts() {
+    return ['Laptop', 'Phone'];
+  }
+}
+```
+
+### **2. Module = "Put in the box"**
+
+```typescript
+@Module({
+  providers: [ProductService], // Put calculator in the box
+})
+export class ProductModule {}
+```
+
+### **3. Controller = Friend who needs calculator**
+
+```typescript
+@Controller('products')
+export class ProductController {
+  constructor(
+    private productService: ProductService, // Borrow from box
+  ) {}
+
+  @Get()
+  getProducts() {
+    return this.productService.getProducts(); // Use borrowed calculator
+  }
+}
+```
+
+## **What Happens When User Makes Request:**
+
+```
+1. User → "Show me products" (GET /products)
+2. NestJS → "Who handles this?" (Finds ProductController)
+3. NestJS → "Oh, ProductController needs ProductService"
+4. NestJS → Checks the "Box" (DI Container)
+5. Finds ProductService → Gives it to ProductController
+6. ProductController uses it → Returns products to user
+```
+
+## **Why This is Good:**
+
+✅ **One service instance** for entire app (efficient)  
+✅ **Easy to test** (can give "fake" service for testing)  
+✅ **Easy to change** (replace service in one place)  
+✅ **Clean code** (controller doesn't worry about creating service)
+
+## **Simple Steps to Use DI:**
+
+1. Add `@Injectable()` above service
+2. Add service to `providers: []` in module
+3. Put service in constructor of controller
+
+## **Real Example You Already Know:**
+
+Think of electricity in your house:
+
+- You don't **create** electricity at home
+- Power company **injects** it into your house
+- You just **use** it when needed
+- If electricity changes (voltage), power company handles it, not you
+
+**DI = Power company delivering electricity to your house**
+
+That's it! You now understand the **core idea** of Dependency Injection!
+
+# **Complete NestJS Crash Course - What You've Learned So Far**
+
+## **📌 PART 1: BASICS OF NESTJS**
+
+### **1. What is NestJS?**
+
+```
+┌─────────────────────────────────────┐
+│          NestJS Framework           │
+│  Built on Express/Fastify + TypeScript │
+│  Uses Decorators (@Get, @Post, etc.)  │
+│  Follows Modular Architecture        │
+└─────────────────────────────────────┘
+```
+
+**Key Features:**
+
+- ✅ Built with TypeScript
+- ✅ Uses Decorators (like Java Spring, C# .NET)
+- ✅ Built on Express.js (can switch to Fastify)
+- ✅ Modular architecture (like Angular)
+
+---
+
+## **📌 PART 2: PROJECT STRUCTURE**
+
+### **Standard Structure:**
+
+```
+src/
+├── main.ts                  # App Entry Point
+├── app.module.ts           # Root Module
+├── products/               # Feature Module
+│   ├── products.module.ts
+│   ├── products.controller.ts
+│   ├── products.service.ts
+│   └── dtos/
+│       ├── create-product.dto.ts
+│       └── update-product.dto.ts
+```
+
+---
+
+## **📌 PART 3: MODULES - "THE ORGANIZERS"**
+
+### **What are Modules?**
+
+Think of them as **"Departments in a Company"**:
+
+- Each module = One department (Products, Users, Orders)
+- Each handles its own responsibilities
+- Root module (`app.module`) is the "CEO"
+
+### **Creating a Module:**
+
+```typescript
+@Module({
+  controllers: [], // Handlers for this department
+  providers: [], // Workers for this department
+})
+export class ProductsModule {}
+```
+
+### **Module Rules:**
+
+1. Each feature gets its own module
+2. Root module imports all feature modules
+3. Modules can import other modules
+
+---
+
+## **📌 PART 4: CONTROLLERS - "THE RECEPTIONISTS"**
+
+### **What are Controllers?**
+
+Think of them as **"Hotel Receptionists"**:
+
+- Handle incoming guests (HTTP requests)
+- Direct them to the right place
+- Don't do the actual work themselves
+
+### **Controller with CRUD Operations:**
+
+```typescript
+@Controller('api/products') // Reception desk for products
+export class ProductsController {
+  @Get() // "Hello, can I help you?"
+  getProducts() {
+    // Directs to service
+    return this.service.getProducts();
+  }
+
+  @Post() // "New guest checking in?"
+  createProduct() {
+    // Directs to service
+    return this.service.createProduct();
+  }
+
+  // GET, POST, PUT, DELETE handle different request types
+}
+```
+
+### **HTTP Methods You Learned:**
+
+- `@Get()` - Read data
+- `@Post()` - Create new data
+- `@Put()` / `@Patch()` - Update data
+- `@Delete()` - Remove data
+
+---
+
+## **📌 PART 5: SERVICES - "THE WORKERS"**
+
+### **What are Services?**
+
+Think of them as **"Specialized Workers"**:
+
+- Do the actual business logic
+- Handle data operations
+- Don't talk to clients directly
+
+### **Service Example:**
+
+```typescript
+@Injectable() // "I'm available for work"
+export class ProductsService {
+  // In-memory database (temporary)
+  private products = [
+    { id: 1, name: 'Laptop', price: 1000 },
+    { id: 2, name: 'Phone', price: 500 },
+  ];
+
+  // Worker methods
+  getAllProducts() {
+    return this.products; // "Here's the data"
+  }
+
+  createProduct(data) {
+    const newProduct = { id: 3, ...data };
+    this.products.push(newProduct);
+    return newProduct; // "I created it for you"
+  }
+}
+```
+
+---
+
+## **📌 PART 6: DEPENDENCY INJECTION - "THE DELIVERY SYSTEM"**
+
+### **The Problem & Solution:**
+
+**OLD WAY (BAD):**
+
+```typescript
+// Controller makes its own service
+class Controller {
+  private service = new Service(); // "I'll build my own worker"
+}
+```
+
+**Problems:** Wasteful, hard to test, tightly coupled
+
+**NEW WAY (GOOD - DI):**
+
+```typescript
+// Controller receives service
+class Controller {
+  constructor(private service: Service) {} // "Give me a worker"
+}
+```
+
+**Benefits:** Efficient, testable, loosely coupled
+
+### **DI in 3 Steps:**
+
+1. **Mark service** with `@Injectable()` ("I'm available")
+2. **Register service** in module's `providers: []` ("Put me in the toolbox")
+3. **Inject service** in constructor ("I need this tool")
+
+### **DI Container Analogy:**
+
+```
+Imagine a TOOL LIBRARY:
+┌─────────────────────────────────┐
+│        DI CONTAINER             │
+│  (Tool Library Manager)         │
+│                                 │
+│  Tools Available:               │
+│  ├── 🔧 ProductsService         │
+│  ├── 🔨 UsersService           │
+│  └── ⚡ AuthService            │
+└─────────────────────────────────┘
+
+When Controller needs a tool:
+1. Controller: "I need ProductsService"
+2. DI Container: "Here it is!" (hands existing tool)
+3. Controller uses tool, returns it when done
+4. Next controller gets SAME tool (not a new one)
+```
+
+---
+
+## **📌 PART 7: DTOs - "THE FORMS"**
+
+### **What are DTOs?**
+
+Think of them as **"Application Forms"**:
+
+- Define what data is expected
+- Include validation rules
+- Ensure data is clean and correct
+
+### **Create Product DTO:**
+
+```typescript
+export class CreateProductDto {
+  @IsString() // Must be text
+  @IsNotEmpty() // Can't be empty
+  @Length(2, 100) // 2-100 characters
+  name: string;
+
+  @IsNumber() // Must be number
+  @Min(0) // Can't be negative
+  price: number;
+}
+```
+
+### **Update Product DTO:**
+
+```typescript
+export class UpdateProductDto {
+  @IsString()
+  @IsOptional() // Optional for updates
+  @Length(2, 100)
+  name?: string; // ? = optional
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional() // Optional for updates
+  price?: number;
+}
+```
+
+---
+
+## **📌 PART 8: VALIDATION PIPES - "THE FORM CHECKERS"**
+
+### **What are Pipes?**
+
+Think of them as **"Quality Control Inspectors"**:
+
+- Check incoming data BEFORE it reaches controller
+- Transform/validate data
+- Reject invalid data early
+
+### **Setup Validation:**
+
+```typescript
+// 1. Install packages:
+npm install class-validator class-transformer
+
+// 2. Add DTO validation rules (see DTOs above)
+
+// 3. Add global validation in main.ts:
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,            // Remove extra fields
+    forbidNonWhitelisted: true, // Error on extra fields
+    transform: true,            // Auto-convert types
+  })
+);
+```
+
+### **What Each Option Does:**
+
+- `whitelist: true` = "Remove any fields not on the form"
+- `forbidNonWhitelisted: true` = "Error if extra fields exist"
+- `transform: true` = "Convert string '100' to number 100"
+
+---
+
+## **📌 PART 9: PIPES FOR PARAMETERS - "THE ID CHECKERS"**
+
+### **ParseIntPipe Example:**
+
+```typescript
+@Get(':id')
+getProduct(@Param('id', ParseIntPipe) id: number) {
+  // id is automatically converted to number
+  // If user sends "hello" → 400 Bad Request
+  // If user sends "123" → becomes 123 (number)
+}
+```
+
+### **Other Useful Pipes:**
+
+- `ParseIntPipe` - String → Number
+- `ParseFloatPipe` - String → Decimal
+- `ParseBoolPipe` - String → Boolean
+- `DefaultValuePipe` - Use default if empty
+
+---
+
+## **📌 PART 10: EXCEPTION HANDLING - "THE PROBLEM SOLVERS"**
+
+### **Built-in Exceptions:**
+
+```typescript
+throw new NotFoundException('Product not found');
+// Returns: 404 Not Found
+
+throw new BadRequestException('Invalid data');
+// Returns: 400 Bad Request
+
+throw new ForbiddenException('Not allowed');
+// Returns: 403 Forbidden
+```
+
+### **Automatic Error Handling:**
+
+```
+User → Invalid Request → Exception → NestJS → Proper Error Response
+                                    (Auto-converts to JSON with status code)
+```
+
+---
+
+## **📌 PART 11: REST CLIENT - "THE POSTMAN ALTERNATIVE"**
+
+### **VS Code REST Client:**
+
+1. Install "REST Client" extension
+2. Create `.http` files
+3. Write requests directly in VS Code
+
+### **Example `.http` file:**
+
+```http
+### Get all products
+GET http://localhost:3000/api/products
+
+### Get single product
+GET http://localhost:3000/api/products/1
+
+### Create product
+POST http://localhost:3000/api/products
+Content-Type: application/json
+
+{
+  "name": "New Product",
+  "price": 100
+}
+
+### Separate requests with ###
+```
+
+---
+
+## **📌 THE COMPLETE FLOW - FROM REQUEST TO RESPONSE**
+
+```
+1. 🌐 CLIENT SENDS REQUEST
+   GET http://localhost:3000/api/products/123
+
+2. 🚪 ENTERS NESTJS
+   Request goes through middleware layers
+
+3. 📍 ROUTE MATCHING
+   NestJS finds: ProductsController → @Get(':id')
+
+4. 🔍 PARAMETER PIPE
+   ParseIntPipe: "123" → 123 (number)
+   If invalid ("abc") → 400 Bad Request
+
+5. 📋 VALIDATION PIPE
+   Checks DTO rules (if POST/PUT)
+   If invalid → 400 Bad Request
+
+6. 👨‍💼 CONTROLLER RECEIVES
+   constructor(private service: ProductsService)
+   DI Container provides service instance
+
+7. 👷 SERVICE EXECUTES
+   Business logic runs
+   Returns data or throws exception
+
+8. ⚠️ EXCEPTION HANDLING (if error)
+   NestJS catches exception
+   Converts to proper HTTP error
+
+9. 📤 RESPONSE SENT
+   JSON response with status code
+
+10. 📦 CLIENT RECEIVES
+    JSON data or error message
+```
+
+---
+
+## **📌 SUMMARY OF KEY CONCEPTS**
+
+| Concept        | Analogy      | Purpose              | Key Decorator                    |
+| -------------- | ------------ | -------------------- | -------------------------------- |
+| **Module**     | Department   | Organize code        | `@Module()`                      |
+| **Controller** | Receptionist | Handle HTTP requests | `@Controller()`                  |
+| **Service**    | Worker       | Business logic       | `@Injectable()`                  |
+| **DTO**        | Form         | Define/validate data | `@IsString()`, `@IsNumber()`     |
+| **Pipe**       | Inspector    | Transform/validate   | `ParseIntPipe`, `ValidationPipe` |
+| **DI**         | Tool Library | Manage dependencies  | `constructor(private service)`   |
+
+---
+
+## **📌 WHAT YOU CAN DO NOW:**
+
+✅ **Create a NestJS project**  
+✅ **Build REST API with CRUD operations**  
+✅ **Organize code into modules**  
+✅ **Separate concerns (controller vs service)**  
+✅ **Validate incoming data**  
+✅ **Handle errors properly**  
+✅ **Use Dependency Injection**  
+✅ **Test APIs with REST Client**
+
+---
+
+## **📌 NEXT STEPS TO LEARN:**
+
+1. **Database Integration** (TypeORM, Prisma, Mongoose)
+2. **Authentication & Authorization** (JWT, Passport)
+3. **File Uploads** (Multer)
+4. **WebSockets** (Real-time communication)
+5. **Testing** (Unit tests, E2E tests)
+6. **Deployment** (Docker, AWS, Heroku)
+
+---
+
+## **🎯 ONE-SENTENCE SUMMARY FOR EACH CONCEPT:**
+
+- **Module** = Department that organizes related features
+- **Controller** = Receptionist that handles client requests
+- **Service** = Worker that does the actual business logic
+- **DTO** = Form that defines what data should look like
+- **Pipe** = Inspector that checks data before processing
+- **DI** = Tool library that provides services to controllers
+- **Decorator** = Label that tells NestJS what something does (`@Get`, `@Post`, etc.)
+
+---
+
+**You now have a solid foundation in NestJS!** 🎉  
+The next steps involve connecting to databases, adding authentication, and building more complex applications.
+
+# **Complete Dependency Injection Guide - All Types Explained**
+
+## **📌 SUMMARY OF WHAT YOU LEARNED:**
+
+### **Three Types of Dependency Injection in NestJS:**
+
+```
+1. ✅ INTERNAL DEPENDENCY  (Same Module)
+2. ✅ EXTERNAL DEPENDENCY  (Different Modules)
+3. 🔄 CIRCULAR DEPENDENCY (Two Modules Depend on Each Other)
+```
+
+---
+
+## **📌 TYPE 1: INTERNAL DEPENDENCY (EASY)**
+
+### **Situation:**
+
+- Service and Controller are in the **SAME module**
+- Example: `ProductsService` → `ProductsController` (both in `products` module)
+
+### **Steps (3 Simple Steps):**
+
+#### **Step 1: Mark Service as Injectable**
+
+```typescript
+// products.service.ts
+@Injectable() // ⭐ Mark as "available for injection"
+export class ProductsService {}
+```
+
+#### **Step 2: Register in Module**
+
+```typescript
+// products.module.ts
+@Module({
+  providers: [ProductsService], // ⭐ Register here
+  controllers: [ProductsController],
+})
+export class ProductsModule {}
+```
+
+#### **Step 3: Inject in Controller**
+
+```typescript
+// products.controller.ts
+@Controller('products')
+export class ProductsController {
+  constructor(private readonly productsService: ProductsService) {} // ⭐ Inject here
+}
+```
+
+### **Visual:**
+
+```
+┌─────────────────────────┐
+│     Products Module     │
+├─────────────────────────┤
+│ • ProductsService      │ ← Inside same module
+│ • ProductsController   │ ← Inside same module
+└─────────────────────────┘
+    ↑
+    Internal Dependency
+    (Same module family)
+```
+
+---
+
+## **📌 TYPE 2: EXTERNAL DEPENDENCY (MEDIUM)**
+
+### **Situation:**
+
+- Service in **ONE module** needs service from **ANOTHER module**
+- Example: `ProductsService` needs `UsersService` (from `users` module)
+
+### **Steps (5 Steps):**
+
+#### **Step 1: Export Service from Source Module**
+
+```typescript
+// users.module.ts (SOURCE MODULE)
+@Module({
+  providers: [UsersService],
+  controllers: [UsersController],
+  exports: [UsersService], // ⭐ EXPORT the service
+})
+export class UsersModule {}
+```
+
+#### **Step 2: Import Module into Target Module**
+
+```typescript
+// products.module.ts (TARGET MODULE)
+@Module({
+  imports: [UsersModule], // ⭐ IMPORT the module
+  providers: [ProductsService],
+  controllers: [ProductsController],
+})
+export class ProductsModule {}
+```
+
+#### **Step 3: Inject in Target Service**
+
+```typescript
+// products.service.ts
+@Injectable()
+export class ProductsService {
+  constructor(
+    private readonly usersService: UsersService, // ⭐ Inject external service
+  ) {}
+}
+```
+
+### **Visual:**
+
+```
+┌─────────────────┐      ┌──────────────────┐
+│  Users Module   │      │ Products Module  │
+├─────────────────┤      ├──────────────────┤
+│ • UsersService │─────→│ • ProductsService│
+│   (EXPORTED)   │       └──────────────────┘
+└─────────────────┘
+        ↑
+        External Dependency
+        (Cross-module)
+```
+
+### **Key Points:**
+
+- **Source module** must `export` the service
+- **Target module** must `import` the module
+- Then inject normally via constructor
+
+---
+
+## **📌 TYPE 3: CIRCULAR DEPENDENCY (COMPLEX)**
+
+### **Situation:**
+
+- **Two modules depend on each other**
+- Example: `UsersModule` needs `ReviewsModule` AND `ReviewsModule` needs `UsersModule`
+- This creates a **"chicken and egg" problem**
+
+### **Problem Example:**
+
+```typescript
+// ❌ WON'T WORK - Circular dependency error
+@Module({
+  imports: [ReviewsModule], // Users imports Reviews
+})
+export class UsersModule {}
+
+@Module({
+  imports: [UsersModule], // Reviews imports Users (CIRCULAR!)
+})
+export class ReviewsModule {}
+```
+
+### **Solution: Use `forwardRef()`**
+
+#### **Step 1: In Both Modules, Use forwardRef()**
+
+```typescript
+// users.module.ts
+@Module({
+  imports: [forwardRef(() => ReviewsModule)], // ⭐ Use forwardRef
+  providers: [UsersService],
+  exports: [UsersService],
+})
+export class UsersModule {}
+
+// reviews.module.ts
+@Module({
+  imports: [forwardRef(() => UsersModule)], // ⭐ Use forwardRef
+  providers: [ReviewsService],
+  exports: [ReviewsService],
+})
+export class ReviewsModule {}
+```
+
+#### **Step 2: In Services, Use @Inject(forwardRef())**
+
+```typescript
+// users.service.ts
+@Injectable()
+export class UsersService {
+  constructor(
+    @Inject(forwardRef(() => ReviewsService)) // ⭐ Special injection
+    private readonly reviewsService: ReviewsService,
+  ) {}
+}
+
+// reviews.service.ts
+@Injectable()
+export class ReviewsService {
+  constructor(
+    @Inject(forwardRef(() => UsersService)) // ⭐ Special injection
+    private readonly usersService: UsersService,
+  ) {}
+}
+```
+
+### **Visual:**
+
+```
+┌─────────────────┐      ┌──────────────────┐
+│  Users Module   │──────│ Reviews Module   │
+├─────────────────┤      ├──────────────────┤
+│ • UsersService │←────→│ • ReviewsService │
+│   needs        │      │   needs          │
+│   ReviewsService│      │   UsersService   │
+└─────────────────┘      └──────────────────┘
+        ↖______________↙
+          Circular Dependency
+          (Solved with forwardRef)
+```
+
+### **Why forwardRef()?**
+
+- Tells NestJS: "I'll tell you what this dependency is LATER"
+- Breaks the circular reference at compile time
+- Allows modules to reference each other
+
+---
+
+## **📌 QUICK COMPARISON TABLE**
+
+| Type         | When to Use                      | Steps   | Special Notes              |
+| ------------ | -------------------------------- | ------- | -------------------------- |
+| **Internal** | Same module                      | 3 steps | Easiest, most common       |
+| **External** | Different modules                | 5 steps | Need `export` and `import` |
+| **Circular** | Two modules depend on each other | Complex | Use `forwardRef()`         |
+
+---
+
+## **📌 PRACTICAL EXAMPLES FROM YOUR CODE:**
+
+### **Example 1: Internal (Products Module)**
+
+```typescript
+// ✅ ProductsService → ProductsController (SAME module)
+@Module({
+  providers: [ProductsService], // Register
+  controllers: [ProductsController], // In same module
+})
+export class ProductsModule {}
+
+@Controller()
+export class ProductsController {
+  constructor(private productsService: ProductsService) {} // Inject
+}
+```
+
+### **Example 2: External (Products needs Users)**
+
+```typescript
+// ✅ ProductsService → UsersService (DIFFERENT modules)
+
+// 1. Export from UsersModule
+@Module({
+  providers: [UsersService],
+  exports: [UsersService], // Export
+})
+export class UsersModule {}
+
+// 2. Import in ProductsModule
+@Module({
+  imports: [UsersModule], // Import
+  providers: [ProductsService],
+})
+export class ProductsModule {}
+
+// 3. Inject in ProductsService
+@Injectable()
+export class ProductsService {
+  constructor(private usersService: UsersService) {} // Inject
+}
+```
+
+### **Example 3: Circular (Users ↔ Reviews)**
+
+```typescript
+// 🔄 UsersModule ↔ ReviewsModule (CIRCULAR)
+
+// Users Module
+@Module({
+  imports: [forwardRef(() => ReviewsModule)], // forwardRef
+  providers: [UsersService],
+  exports: [UsersService],
+})
+export class UsersModule {}
+
+// Reviews Module
+@Module({
+  imports: [forwardRef(() => UsersModule)], // forwardRef
+  providers: [ReviewsService],
+  exports: [ReviewsService],
+})
+export class ReviewsModule {}
+
+// In Services:
+@Injectable()
+export class UsersService {
+  constructor(
+    @Inject(forwardRef(() => ReviewsService)) // Special injection
+    private reviewsService: ReviewsService,
+  ) {}
+}
+```
+
+---
+
+## **📌 COMMON ERRORS & SOLUTIONS:**
+
+### **Error 1: "Cannot resolve dependencies"**
+
+```bash
+# Error: Nest can't resolve dependencies...
+```
+
+**Solution:** Check if service is:
+
+1. Marked with `@Injectable()`
+2. Added to module's `providers: []`
+3. If external: exported AND module imported
+
+### **Error 2: Circular Dependency**
+
+```bash
+# Error: Circular dependency detected
+```
+
+**Solution:** Use `forwardRef()` in BOTH modules and services
+
+### **Error 3: Module not found**
+
+```bash
+# Error: Module is not available
+```
+
+**Solution:** Check `imports: []` array includes the module
+
+---
+
+## **📌 BEST PRACTICES:**
+
+### **DO:**
+
+✅ Keep dependencies **internal** when possible  
+✅ Use **external** for shared services (like `UsersService`)  
+✅ **Avoid circular** dependencies if possible (redesign architecture)  
+✅ **Test** dependencies work before adding complex logic
+
+### **DON'T:**
+
+❌ Create circular dependencies without `forwardRef()`  
+❌ Forget to `export` services needed by other modules  
+❌ Import entire modules for just one service
+
+---
+
+## **📌 CHEAT SHEET:**
+
+```typescript
+// ========== INTERNAL (Easy) ==========
+// Module: providers: [Service]
+// Controller: constructor(private service: Service)
+
+// ========== EXTERNAL (Medium) ==========
+// Source Module: exports: [Service]
+// Target Module: imports: [SourceModule]
+// Target Service: constructor(private service: Service)
+
+// ========== CIRCULAR (Complex) ==========
+// Module A: imports: [forwardRef(() => ModuleB)]
+// Module B: imports: [forwardRef(() => ModuleA)]
+// Service A: @Inject(forwardRef(() => ServiceB))
+// Service B: @Inject(forwardRef(() => ServiceA))
+```
+
+---
+
+## **📌 FINAL SUMMARY:**
+
+### **Think of Modules as Houses:**
+
+```
+🏠 HOUSE 1 (Products Module)
+├── 👨‍🍳 ProductsService (cooks products)
+└── 👨‍💼 ProductsController (serves customers)
+
+🏠 HOUSE 2 (Users Module)
+├── 👩‍🍳 UsersService (cooks users)
+└── 👩‍💼 UsersController (serves customers)
+
+```
+
+### **Three Scenarios:**
+
+1. **Internal**: 👨‍🍳 talks to 👨‍💼 (same house, easy)
+2. **External**: 👨‍🍳 borrows 👩‍🍳's recipe (different houses, needs permission)
+3. **Circular**: 👨‍🍳 and 👩‍🍳 keep borrowing from each other (complex, needs special arrangement)
+
+### **Golden Rule:**
+
+**"Start with internal dependencies. Only go external/circular when absolutely necessary."**
+
+---
+
+## **🎯 WHAT TO DO NEXT:**
+
+1. **Practice internal DI** (you already know this)
+2. **Try external DI** with 2-3 modules
+3. **Avoid circular** if possible (redesign instead)
+4. **Use forwardRef()** only when truly needed
+
+**You now understand ALL types of Dependency Injection in NestJS!** 🎉
+
+# **Complete Database Integration with TypeORM in NestJS**
+
+## **📌 SUMMARY: DATABASE CONNECTION & TYPEORM**
+
+### **1. What You've Learned:**
+
+You learned how to connect NestJS to a **PostgreSQL database** using **TypeORM**, an ORM (Object-Relational Mapper) that lets you write TypeScript code instead of SQL.
+
+---
+
+## **📌 2. THREE KEY CONCEPTS:**
+
+### **Concept 1: TypeORM - The Translator**
+
+```
+Your TypeScript Code → TypeORM → SQL → PostgreSQL Database
+                        (Translates)    (Executes)
+```
+
+### **Concept 2: Entities - The Blueprints**
+
+```typescript
+// product.entity.ts - Blueprint for database table
+@Entity('products') // Maps to 'products' table
+export class Product {
+  @PrimaryGeneratedColumn() // Auto-increment ID
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 }) // Database column
+  title: string;
+
+  @Column({ type: 'float' }) // Float type for price
+  price: number;
+
+  @CreateDateColumn() // Auto-set on create
+  createdAt: Date;
+
+  @UpdateDateColumn() // Auto-update on change
+  updatedAt: Date;
+}
+```
+
+### **Concept 3: Repository - The Data Manager**
+
+```typescript
+// In service - Repository handles all database operations
+constructor(
+  @InjectRepository(Product)  // Inject repository
+  private productRepository: Repository<Product>
+) {}
+
+// Repository methods:
+// .find() - Get all records
+// .findOne() - Get single record
+// .create() - Create new record
+// .save() - Save/update record
+// .remove() - Delete record
+```
+
+---
+
+## **📌 3. STEP-BY-STEP IMPLEMENTATION:**
+
+### **Step 1: Install Required Packages**
+
+```bash
+npm install @nestjs/typeorm typeorm pg
+```
+
+- `@nestjs/typeorm` - NestJS integration for TypeORM
+- `typeorm` - The ORM itself
+- `pg` - PostgreSQL driver
+
+### **Step 2: Configure Database Connection**
+
+```typescript
+// app.module.ts
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Product } from './products/product.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres', // Database type
+      host: 'localhost', // Database host
+      port: 5432, // PostgreSQL default port
+      username: 'postgres', // Your username
+      password: 'your_password', // Your password
+      database: 'nest_db', // Database name
+      entities: [Product], // Your entities
+      synchronize: true, // Auto-create tables (DANGEROUS in production!)
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+**⚠️ WARNING:** `synchronize: true` is **DANGEROUS** in production as it can delete data. Use migrations instead.
+
+### **Step 3: Create Entity**
+
+```typescript
+// product.entity.ts
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+@Entity('products') // Table name
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 })
+  title: string;
+
+  @Column({ type: 'text', nullable: true }) // Optional description
+  description?: string;
+
+  @Column({ type: 'float' })
+  price: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### **Step 4: Configure Feature Module**
+
+```typescript
+// products.module.ts
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Product } from './product.entity';
+import { ProductsService } from './products.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Product])], // ⭐ Register entity
+  providers: [ProductsService],
+  controllers: [ProductsController],
+})
+export class ProductsModule {}
+```
+
+### **Step 5: Inject Repository in Service**
+
+```typescript
+// products.service.ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Product } from './product.entity';
+
+@Injectable()
+export class ProductsService {
+  constructor(
+    @InjectRepository(Product) // ⭐ Inject repository
+    private productRepository: Repository<Product>,
+  ) {}
+}
+```
+
+### **Step 6: Implement CRUD Operations**
+
+```typescript
+// products.service.ts - CRUD methods
+@Injectable()
+export class ProductsService {
+  // CREATE
+  async create(createProductDto: CreateProductDto) {
+    const product = this.productRepository.create(createProductDto);
+    return await this.productRepository.save(product);
+  }
+
+  // READ ALL
+  async findAll() {
+    return await this.productRepository.find();
+  }
+
+  // READ ONE
+  async findOne(id: number) {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
+  }
+
+  // UPDATE
+  async update(id: number, updateProductDto: UpdateProductDto) {
+    const product = await this.findOne(id); // Reuse findOne for validation
+
+    // Update only provided fields
+    Object.assign(product, updateProductDto);
+
+    return await this.productRepository.save(product);
+  }
+
+  // DELETE
+  async remove(id: number) {
+    const product = await this.findOne(id); // Reuse findOne for validation
+    await this.productRepository.remove(product);
+    return { message: `Product with ID ${id} deleted successfully` };
+  }
+}
+```
+
+---
+
+## **📌 4. COMPLETE WORKING EXAMPLE:**
+
+### **Entity (product.entity.ts):**
+
+```typescript
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+@Entity('products')
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 })
+  title: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  @Column({ type: 'float' })
+  price: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### **DTOs (Data Transfer Objects):**
+
+```typescript
+// create-product.dto.ts
+export class CreateProductDto {
+  @IsString()
+  @Length(2, 150)
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+}
+
+// update-product.dto.ts
+export class UpdateProductDto {
+  @IsString()
+  @Length(2, 150)
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number;
+}
+```
+
+### **Service (products.service.ts):**
+
+```typescript
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Product } from './product.entity';
+import { CreateProductDto } from './dtos/create-product.dto';
+import { UpdateProductDto } from './dtos/update-product.dto';
+
+@Injectable()
+export class ProductsService {
+  constructor(
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
+  ) {}
+
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const product = this.productRepository.create(createProductDto);
+    return await this.productRepository.save(product);
+  }
+
+  async findAll(): Promise<Product[]> {
+    return await this.productRepository.find();
+  }
+
+  async findOne(id: number): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
+  }
+
+  async update(
+    id: number,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
+    const product = await this.findOne(id);
+    Object.assign(product, updateProductDto);
+    return await this.productRepository.save(product);
+  }
+
+  async remove(id: number): Promise<{ message: string }> {
+    const product = await this.findOne(id);
+    await this.productRepository.remove(product);
+    return { message: `Product with ID ${id} deleted successfully` };
+  }
+}
+```
+
+### **Controller (products.controller.ts):**
+
+```typescript
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { ProductsService } from './products.service';
+import { CreateProductDto } from './dtos/create-product.dto';
+import { UpdateProductDto } from './dtos/update-product.dto';
+
+@Controller('products')
+export class ProductsController {
+  constructor(private readonly productsService: ProductsService) {}
+
+  @Post()
+  create(@Body() createProductDto: CreateProductDto) {
+    return this.productsService.create(createProductDto);
+  }
+
+  @Get()
+  findAll() {
+    return this.productsService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.findOne(id);
+  }
+
+  @Put(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    return this.productsService.update(id, updateProductDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.remove(id);
+  }
+}
+```
+
+---
+
+## **📌 5. DATABASE COLUMN DECORATORS:**
+
+### **Common Column Decorators:**
+
+```typescript
+@PrimaryGeneratedColumn()          // Auto-increment primary key
+@PrimaryColumn()                  // Manual primary key
+
+@Column()                         // Basic column
+@Column({ type: 'varchar' })      // Specify type
+@Column({ length: 150 })          // Max length
+@Column({ nullable: true })       // Allow NULL
+@Column({ unique: true })         // Unique constraint
+@Column({ default: 'default' })   // Default value
+
+@CreateDateColumn()               // Auto-set on create
+@UpdateDateColumn()               // Auto-update on change
+@DeleteDateColumn()               // Soft delete
+```
+
+### **Column Types:**
+
+```typescript
+@Column({ type: 'varchar' })      // String
+@Column({ type: 'text' })         // Long text
+@Column({ type: 'int' })          // Integer
+@Column({ type: 'float' })        // Floating point
+@Column({ type: 'decimal' })      // Decimal
+@Column({ type: 'boolean' })      // Boolean
+@Column({ type: 'date' })         // Date
+@Column({ type: 'timestamp' })    // Timestamp
+@Column({ type: 'json' })         // JSON data
+```
+
+---
+
+## **📌 6. TESTING WITH REST CLIENT:**
+
+### **Test Requests (.http file):**
+
+```http
+### CREATE Product
+POST http://localhost:3000/products
+Content-Type: application/json
+
+{
+  "title": "Laptop",
+  "description": "Gaming laptop with RTX 3080",
+  "price": 1500
+}
+
+### GET All Products
+GET http://localhost:3000/products
+
+### GET Single Product
+GET http://localhost:3000/products/1
+
+### UPDATE Product
+PUT http://localhost:3000/products/1
+Content-Type: application/json
+
+{
+  "price": 1400
+}
+
+### DELETE Product
+DELETE http://localhost:3000/products/1
+```
+
+---
+
+## **📌 7. SECURITY WARNINGS:**
+
+### **⚠️ NEVER DO THIS IN PRODUCTION:**
+
+```typescript
+// ❌ DANGEROUS - Can delete data!
+synchronize: true;
+
+// ✅ SAFER - Use migrations
+synchronize: false;
+```
+
+### **⚠️ NEVER HARDCODE PASSWORDS:**
+
+```typescript
+// ❌ BAD - Password in code
+password: 'mysecret123';
+
+// ✅ GOOD - Use environment variables
+password: process.env.DB_PASSWORD;
+```
+
+---
+
+## **📌 8. COMMON ERRORS & SOLUTIONS:**
+
+### \*\*Error: "Cannot find module 'pg'"`
+
+```bash
+# Solution: Install PostgreSQL driver
+npm install pg
+```
+
+### **Error: "Connection refused"**
+
+```bash
+# Solution: Check if PostgreSQL is running
+# 1. Open pgAdmin
+# 2. Check connection
+# 3. Verify port (default: 5432)
+```
+
+### **Error: "Role 'postgres' does not exist"**
+
+```bash
+# Solution: Create database user
+# In pgAdmin: Create user/database
+```
+
+---
+
+## **📌 9. NEXT STEPS TO LEARN:**
+
+1. **Environment Variables** (`.env` file)
+2. **Database Migrations** (Version control for database)
+3. **Relationships** (One-to-Many, Many-to-Many)
+4. **Query Building** (Complex queries with TypeORM)
+5. **Transactions** (Multiple operations as one unit)
+
+---
+
+## **🎯 KEY TAKEAWAYS:**
+
+✅ **TypeORM** translates TypeScript → SQL  
+✅ **Entities** define database tables  
+✅ **Repository** handles database operations  
+✅ **Decorators** define column properties  
+✅ **Never use** `synchronize: true` in production  
+✅ **Always use** environment variables for passwords
+
+**You now have a working database-connected NestJS application!** 🎉
