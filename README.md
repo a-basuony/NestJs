@@ -4841,3 +4841,621 @@ cross-env NODE_ENV=test npm run start
 **You now have a secure, environment-aware NestJS application!** 🎉
 
 </aside>
+
+# **Complete Database Relationships Guide with TypeORM**
+
+## **📋 PART 1: ENTITY RELATIONSHIPS OVERVIEW**
+
+### **Three Types of Relationships:**
+
+```
+1️⃣ One-to-Many (1:m) / Many-to-One (m:1)
+   👤 User → 🛍️ Products (One User can have Many Products)
+   🛍️ Product → 👤 User (Many Products belong to One User)
+
+2️⃣ Many-to-Many (m:m)
+   🛍️ Product ↔️ 🏷️ Category (Product can have Many Categories, Category can have Many Products)
+
+3️⃣ One-to-One (1:1)
+   👤 User ↔️ 📝 Profile (One User has One Profile, One Profile belongs to One User)
+```
+
+---
+
+## **📋 PART 2: STEP-BY-STEP IMPLEMENTATION**
+
+### **Step 1: Create Review Entity**
+
+```typescript
+// File: src/reviews/review.entity.ts
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Product } from '../products/product.entity';
+import { User } from '../users/user.entity';
+import { CURRENT_TIMESTAMP } from '../utils/constants';
+
+@Entity('reviews') // Table name in database
+export class Review {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'int' })
+  rating: number; // 1-5 stars
+
+  @Column({ type: 'varchar', length: 1000 })
+  comment: string;
+
+  @ManyToOne(() => Product, (product) => product.reviews)
+  product: Product; // Which product this review is for
+
+  @ManyToOne(() => User, (user) => user.reviews)
+  user: User; // Which user wrote this review
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### **Step 2: Create User Entity**
+
+```typescript
+// File: src/users/user.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Product } from '../products/product.entity';
+import { Review } from '../reviews/review.entity';
+
+// User types enum
+export enum UserType {
+  ADMIN = 'admin',
+  CUSTOMER = 'customer',
+}
+
+@Entity('users')
+export class User {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 })
+  username: string;
+
+  @Column({ type: 'varchar', length: 250, unique: true })
+  email: string;
+
+  @Column({ type: 'varchar' })
+  password: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserType,
+    default: UserType.CUSTOMER,
+  })
+  userType: UserType;
+
+  @Column({ type: 'boolean', default: false })
+  isAccountVerified: boolean;
+
+  // Relationships
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[]; // One user can have many products
+
+  @OneToMany(() => Review, (review) => review.user)
+  reviews: Review[]; // One user can write many reviews
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### **Step 3: Update Product Entity with Relationships**
+
+```typescript
+// File: src/products/product.entity.ts
+import { Entity, Column, ManyToOne, OneToMany } from 'typeorm';
+import { User } from '../users/user.entity';
+import { Review } from '../reviews/review.entity';
+
+@Entity('products')
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 150 })
+  title: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  @Column({ type: 'float' })
+  price: number;
+
+  // Relationships
+  @ManyToOne(() => User, (user) => user.products)
+  user: User; // Many products belong to one user
+
+  @OneToMany(() => Review, (review) => review.product)
+  reviews: Review[]; // One product can have many reviews
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+---
+
+## **📋 PART 3: RELATIONSHIP EXPLANATION**
+
+### **User ↔ Product Relationship:**
+
+```typescript
+// In User Entity:
+@OneToMany(() => Product, (product) => product.user)
+products: Product[];
+// Translation: "One User has Many Products"
+
+// In Product Entity:
+@ManyToOne(() => User, (user) => user.products)
+user: User;
+// Translation: "Many Products belong to One User"
+```
+
+### **Visual Representation:**
+
+```
+👤 USER TABLE
+┌─────┬───────────┬─────────────┐
+│ id  │ username  │ email       │
+├─────┼───────────┼─────────────┤
+│ 1   │ john      │ john@email.com │
+│ 2   │ sarah     │ sarah@email.com│
+└─────┴───────────┴─────────────┘
+
+🛍️ PRODUCTS TABLE
+┌─────┬─────────────┬───────┬─────────┐
+│ id  │ title       │ price │ user_id │  ← Foreign Key
+├─────┼─────────────┼───────┼─────────┤
+│ 1   │ Laptop      │ 1000  │ 1       │  ← John's product
+│ 2   │ Phone       │ 500   │ 1       │  ← John's product
+│ 3   │ Headphones  │ 200   │ 2       │  ← Sarah's product
+└─────┴─────────────┴───────┴─────────┘
+```
+
+### **User ↔ Review Relationship:**
+
+```typescript
+// In User Entity:
+@OneToMany(() => Review, (review) => review.user)
+reviews: Review[];
+// Translation: "One User can write Many Reviews"
+
+// In Review Entity:
+@ManyToOne(() => User, (user) => user.reviews)
+user: User;
+// Translation: "Many Reviews are written by One User"
+```
+
+### **Product ↔ Review Relationship:**
+
+```typescript
+// In Product Entity:
+@OneToMany(() => Review, (review) => review.product)
+reviews: Review[];
+// Translation: "One Product can have Many Reviews"
+
+// In Review Entity:
+@ManyToOne(() => Product, (product) => product.reviews)
+product: Product;
+// Translation: "Many Reviews belong to One Product"
+```
+
+---
+
+## **📋 PART 4: CREATE ENUMS AND CONSTANTS**
+
+### **Step 4: Create UserType Enum**
+
+```typescript
+// File: src/users/enums/user-type.enum.ts
+export enum UserType {
+  ADMIN = 'admin',
+  CUSTOMER = 'customer',
+}
+```
+
+### **Step 5: Create Constants File**
+
+```typescript
+// File: src/utils/constants.ts
+export const CURRENT_TIMESTAMP = 'CURRENT_TIMESTAMP(6)';
+export const DEFAULT_USER_TYPE = 'customer';
+```
+
+---
+
+## **📋 PART 5: UPDATE MODULES**
+
+### **Step 6: Update Review Module**
+
+```typescript
+// File: src/reviews/reviews.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Review } from './review.entity';
+import { ReviewsController } from './reviews.controller';
+import { ReviewsService } from './reviews.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([Review]), // Register Review entity
+  ],
+  controllers: [ReviewsController],
+  providers: [ReviewsService],
+})
+export class ReviewsModule {}
+```
+
+### **Step 7: Update User Module**
+
+```typescript
+// File: src/users/users.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from './user.entity';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([User]), // Register User entity
+  ],
+  controllers: [UsersController],
+  providers: [UsersService],
+})
+export class UsersModule {}
+```
+
+### **Step 8: Update Product Module**
+
+```typescript
+// File: src/products/products.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Product } from './product.entity';
+import { ProductsController } from './products.controller';
+import { ProductsService } from './products.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([Product]), // Register Product entity
+  ],
+  controllers: [ProductsController],
+  providers: [ProductsService],
+})
+export class ProductsModule {}
+```
+
+### **Step 9: Update App Module**
+
+```typescript
+// File: src/app.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Product } from './products/product.entity';
+import { User } from './users/user.entity';
+import { Review } from './reviews/review.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      // ... other config
+      entities: [Product, User, Review], // Add all entities
+      synchronize: true, // Only for development!
+    }),
+    ProductsModule,
+    UsersModule,
+    ReviewsModule,
+  ],
+})
+export class AppModule {}
+```
+
+---
+
+## **📋 PART 6: DATABASE TABLE STRUCTURE**
+
+### **Generated Tables in PostgreSQL:**
+
+```sql
+-- Users Table
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(150) NOT NULL,
+  email VARCHAR(250) UNIQUE NOT NULL,
+  password VARCHAR NOT NULL,
+  user_type VARCHAR DEFAULT 'customer',
+  is_account_verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Products Table
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(150) NOT NULL,
+  description TEXT,
+  price FLOAT NOT NULL,
+  user_id INTEGER REFERENCES users(id),  -- Foreign key to users
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Reviews Table
+CREATE TABLE reviews (
+  id SERIAL PRIMARY KEY,
+  rating INTEGER NOT NULL,
+  comment VARCHAR(1000) NOT NULL,
+  product_id INTEGER REFERENCES products(id),  -- Foreign key to products
+  user_id INTEGER REFERENCES users(id),        -- Foreign key to users
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## **📋 PART 7: USING RELATIONSHIPS IN SERVICES**
+
+### **Creating a Review with Relationships:**
+
+```typescript
+// File: src/reviews/reviews.service.ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Review } from './review.entity';
+import { CreateReviewDto } from './dtos/create-review.dto';
+import { Product } from '../products/product.entity';
+import { User } from '../users/user.entity';
+
+@Injectable()
+export class ReviewsService {
+  constructor(
+    @InjectRepository(Review)
+    private reviewRepository: Repository<Review>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+  ) {}
+
+  async create(createReviewDto: CreateReviewDto): Promise<Review> {
+    // Find the product
+    const product = await this.productRepository.findOne({
+      where: { id: createReviewDto.productId },
+    });
+
+    // Find the user
+    const user = await this.userRepository.findOne({
+      where: { id: createReviewDto.userId },
+    });
+
+    // Create review with relationships
+    const review = this.reviewRepository.create({
+      rating: createReviewDto.rating,
+      comment: createReviewDto.comment,
+      product: product, // Set the relationship
+      user: user, // Set the relationship
+    });
+
+    return await this.reviewRepository.save(review);
+  }
+
+  async getProductReviews(productId: number): Promise<Review[]> {
+    return await this.reviewRepository.find({
+      where: { product: { id: productId } },
+      relations: ['user'], // Include user data in response
+    });
+  }
+}
+```
+
+### **CreateReview DTO:**
+
+```typescript
+// File: src/reviews/dtos/create-review.dto.ts
+import { IsInt, IsString, Min, Max, Length } from 'class-validator';
+
+export class CreateReviewDto {
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating: number;
+
+  @IsString()
+  @Length(1, 1000)
+  comment: string;
+
+  @IsInt()
+  productId: number; // Which product is being reviewed
+
+  @IsInt()
+  userId: number; // Who is writing the review
+}
+```
+
+---
+
+## **📋 PART 8: TESTING RELATIONSHIPS**
+
+### **Test Data Flow:**
+
+```
+1. Create User → Users table (ID: 1)
+2. Create Product → Products table (user_id: 1)
+3. Create Review → Reviews table (product_id: 1, user_id: 1)
+```
+
+### **Test with REST Client:**
+
+```http
+### 1. Create User
+POST http://localhost:3000/users
+Content-Type: application/json
+
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "secure123"
+}
+
+### 2. Create Product (by user ID 1)
+POST http://localhost:3000/products
+Content-Type: application/json
+
+{
+  "title": "Laptop",
+  "description": "Gaming laptop",
+  "price": 1500,
+  "userId": 1
+}
+
+### 3. Create Review (for product ID 1 by user ID 1)
+POST http://localhost:3000/reviews
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "comment": "Excellent product!",
+  "productId": 1,
+  "userId": 1
+}
+```
+
+---
+
+## **📋 PART 9: QUERYING WITH RELATIONSHIPS**
+
+### **Get User with Products and Reviews:**
+
+```typescript
+async getUserWithRelations(userId: number) {
+  return await this.userRepository.findOne({
+    where: { id: userId },
+    relations: ['products', 'reviews'],  // Load related data
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      products: {
+        id: true,
+        title: true,
+        price: true,
+      },
+      reviews: {
+        id: true,
+        rating: true,
+        comment: true,
+      }
+    }
+  });
+}
+```
+
+### **Get Product with Reviews and User:**
+
+```typescript
+async getProductWithRelations(productId: number) {
+  return await this.productRepository.findOne({
+    where: { id: productId },
+    relations: ['user', 'reviews', 'reviews.user'],  // Nested relations
+  });
+}
+```
+
+---
+
+## **📋 PART 10: BEST PRACTICES & COMMON ISSUES**
+
+### **Best Practices:**
+
+✅ **Always define both sides** of the relationship  
+✅ **Use `relations: []`** to load related data when needed  
+✅ **Validate foreign keys** exist before creating relationships  
+✅ **Use cascade options** carefully (can delete related data)  
+✅ **Index foreign keys** for better performance
+
+### **Common Issues & Solutions:**
+
+1. **"Cannot save relation"** - Make sure related entities exist first
+2. **"Circular dependency"** - Use forwardRef() in modules
+3. **"Too many relations loaded"** - Use `select` to choose specific fields
+4. **"Performance issues"** - Use query builders for complex queries
+
+### **Cascade Options:**
+
+```typescript
+@OneToMany(() => Product, (product) => product.user, {
+  cascade: true,  // Auto save related entities
+  onDelete: 'CASCADE',  // Delete products when user is deleted
+})
+products: Product[];
+```
+
+---
+
+## **📋 PART 11: COMPLETE PROJECT STRUCTURE**
+
+```
+src/
+├── main.ts
+├── app.module.ts
+├── products/
+│   ├── product.entity.ts          # Updated with relationships
+│   ├── products.module.ts
+│   ├── products.controller.ts
+│   ├── products.service.ts
+│   └── dtos/
+├── users/
+│   ├── user.entity.ts             # New entity
+│   ├── users.module.ts
+│   ├── users.controller.ts
+│   ├── users.service.ts
+│   ├── enums/
+│   │   └── user-type.enum.ts
+│   └── dtos/
+├── reviews/
+│   ├── review.entity.ts           # New entity
+│   ├── reviews.module.ts
+│   ├── reviews.controller.ts
+│   ├── reviews.service.ts
+│   └── dtos/
+└── utils/
+    └── constants.ts
+```
+
+---
+
+## **🎯 KEY TAKEAWAYS:**
+
+✅ **One-to-Many (1:m)** - `@OneToMany` + `@ManyToOne`  
+✅ **Foreign Keys** - Automatically created by TypeORM  
+✅ **Relations** - Use `relations: []` to load related data  
+✅ **DTOs** - Include foreign key IDs for creating relationships  
+✅ **Database Tables** - Three tables with foreign key relationships
+
+**You now have a fully relational database schema with Users, Products, and Reviews!** 🎉
