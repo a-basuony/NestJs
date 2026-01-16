@@ -5,6 +5,8 @@ import { UsersModule } from './users/users.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { Product } from './products/product.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { User } from './users/user.entity';
+import { Review } from './reviews/review.entity';
 
 @Module({
   imports: [
@@ -24,7 +26,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        entities: [Product],
+        entities: [Product, User, Review],
         synchronize: process.env.NODE_ENV !== 'production',
       }),
     }),
