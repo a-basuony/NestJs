@@ -4222,3 +4222,622 @@ npm install pg
 ✅ **Always use** environment variables for passwords
 
 **You now have a working database-connected NestJS application!** 🎉
+
+<aside>
+💡
+
+# **Complete Environment Variables Guide for NestJS**
+
+## **📋 PART 1: WHAT ARE ENVIRONMENT VARIABLES?**
+
+### **The Problem:**
+
+Hardcoding sensitive data in code:
+
+```tsx
+// ❌ BAD - Password in code
+password: 'mysecret123',
+database: 'nest_db'
+
+```
+
+- **Security risk** - Anyone can see your password
+- **Different environments** - Development, Testing, Production need different configs
+- **Team collaboration** - Everyone needs the same config
+
+### **The Solution:**
+
+Use `.env` files to store configuration separately from code.
+
+---
+
+## **📋 PART 2: STEP-BY-STEP IMPLEMENTATION**
+
+### **Step 1: Install Required Packages**
+
+```bash
+npm install @nestjs/config
+
+```
+
+This package helps manage environment variables in NestJS.
+
+### **Step 2: Create `.env` File**
+
+```bash
+# File: .env (in project root)
+# Database Configuration
+DB_USERNAME=postgres
+DB_PASSWORD=your_password_here
+DB_NAME=nest_db
+DB_PORT=5432
+DB_HOST=localhost
+
+# Application Configuration
+APP_PORT=3000
+NODE_ENV=development
+
+```
+
+### **Step 3: Create Environment-Specific Files**
+
+```bash
+# File: .env.development (Development environment)
+DB_USERNAME=postgres
+DB_PASSWORD=dev_password
+DB_NAME=nest_db_dev
+# like :
+DB_USERNAME=postgres
+DB_PASSWORD=12345
+DB_DATABASE=nest_db
+DB_PORT=5432
+
+# File: .env.test (Testing environment)
+DB_USERNAME=postgres
+DB_PASSWORD=test_password
+DB_NAME=nest_db_test
+
+# File: .env.production (Production environment)
+DB_USERNAME=production_user
+DB_PASSWORD=strong_production_password
+DB_NAME=nest_db_prod
+
+```
+
+### **Step 4: Update `.gitignore`**
+
+```
+# File: .gitignore
+.env
+.env.development
+.env.test
+.env.*
+!*.example.env
+
+```
+
+This prevents pushing sensitive data to GitHub.
+
+### to Makes .env variables or config available everywhere in **`app.module.ts`**
+
+```tsx
+	// you need to install
+	npm install @nestjs/config
+
+    //1- in **app.module.ts**
+
+    import { ConfigModule} from '@nestjs/config';
+    // ⭐ Config Module (MUST be first)
+    ConfigModule.forRoot({
+      isGlobal: true,  // Makes config available everywhere
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,  // Loads correct .env file
+    }),
+
+    //2. in Controller or Service use it like this
+		 import { ConfigService } from '@nestjs/config';
+		@Controller('api/products')
+		export class ProductsController {
+				    constructor(
+				        private readonly config: ConfigService,
+					  ) {}
+
+					  // GET : ~/api/products
+					  @Get()
+					  public GetAllProducts() {
+					    const sample = this.config.get<string>('SAMPLE');
+					    const sample1 = process.env.SAMPLE; // not recommended in Controller, Service
+					    console.log(sample, sample1);
+					    return this.productsService.findAll();
+					  }
+		    }
+```
+
+### **Step 5: Update `app.module.ts`**
+
+```tsx
+// File: src/app.module.ts
+import { Module } from '@nestjs/common';
+// import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+@Module({
+  imports: [
+    // ⭐ Config Module (MUST be first)
+    ConfigModule.forRoot({
+      isGlobal: true, // Makes config available everywhere
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`, // Loads correct .env file
+    }),
+
+    // TypeORM Module (now uses env variables)
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: configService.get<string>('NODE_ENV') !== 'production', // Auto-sync only in dev
+      }),
+      // inject: [ConfigService],
+    }),
+
+    // ... other modules
+  ],
+})
+export class AppModule {}
+```
+
+---
+
+## **📋 PART 3: USING ENVIRONMENT VARIABLES**
+
+### **Method 1: Using ConfigService (Recommended)**
+
+```tsx
+// File: src/products/products.controller.ts
+import { Controller, Get } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Controller('products')
+export class ProductsController {
+  constructor(private configService: ConfigService) {}
+
+  @Get('config')
+  getConfig() {
+    return {
+      nodeEnv: this.configService.get<string>('NODE_ENV'),
+      dbName: this.configService.get<string>('DB_NAME'),
+      appPort: this.configService.get<number>('APP_PORT'),
+    };
+  }
+}
+```
+
+### **Method 2: Using process.env (Traditional)**
+
+```tsx
+// File: src/config/database.config.ts
+export const databaseConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT) || 5432,
+  username: process.env.DB_USERNAME || 'postgres',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'nest_db',
+};
+```
+
+### **Method 3: Creating a Configuration Service**
+
+```tsx
+// File: src/config/config.service.ts
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class AppConfigService {
+  constructor(private configService: ConfigService) {}
+
+  get database() {
+    return {
+      host: this.configService.get<string>('DB_HOST'),
+      port: this.configService.get<number>('DB_PORT'),
+      username: this.configService.get<string>('DB_USERNAME'),
+      password: this.configService.get<string>('DB_PASSWORD'),
+      database: this.configService.get<string>('DB_NAME'),
+    };
+  }
+
+  get isProduction(): boolean {
+    return this.configService.get<string>('NODE_ENV') === 'production';
+  }
+
+  get isDevelopment(): boolean {
+    return this.configService.get<string>('NODE_ENV') === 'development';
+  }
+}
+```
+
+---
+
+## **📋 PART 4: CROSS-PLATFORM ENVIRONMENT SETUP**
+
+### **The Problem:**
+
+Different OS require different commands:
+
+- **Windows:** `SET NODE_ENV=development`
+- **Linux/Mac:** `export NODE_ENV=development`
+
+```tsx
+// in app.module.ts
+  ConfigModule.forRoot({
+      isGlobal: true, // makes config available everywhere
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`, // loads .env.development , in Test it will be .env.test
+  }),
+
+  // note envFilePath => development not equal in test mode
+  // because each one has it's own DB ,
+  // we don't use the same database for development and production also test
+
+ // in package.json (not working ) old way
+     "start:dev": "set NODE_ENV=development && nest start --watch",
+
+// we use a package
+
+//1. npm install cross-env --save-dev
+
+//2. in package.json
+	// development
+	"start:dev": "cross-env NODE_ENV=development  nest start --watch",
+	"start:debug": "cross-env NODE_ENV=development nest start --debug --watch",
+	// production
+  "start:prod": "cross-env NODE_ENV=production node dist/main",
+  // testing
+    "test": "cross-env NODE_ENV=test jest",
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
+    "test:cov": " cross-env NODE_ENV=test jest --coverage",
+    "test:debug": "cross-env NODE_ENV=test node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "cross-env NODE_ENV=test jest --config ./test/jest-e2e.json"
+
+```
+
+### **Solution: Install cross-env**
+
+```bash
+npm install cross-env --save-dev
+
+```
+
+### **Update package.json scripts:**
+
+```json
+{
+  "scripts": {
+    "start": "cross-env NODE_ENV=development nest start",
+    "start:dev": "cross-env NODE_ENV=development nest start --watch",
+    "start:debug": "cross-env NODE_ENV=development nest start --debug --watch",
+    "start:prod": "cross-env NODE_ENV=production node dist/main",
+
+    "test": "cross-env NODE_ENV=test jest",
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
+    "test:cov": "cross-env NODE_ENV=test jest --coverage",
+    "test:debug": "cross-env NODE_ENV=test node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
+  }
+}
+```
+
+---
+
+## **📋 PART 5: VALIDATING ENVIRONMENT VARIABLES**
+
+### **Create Validation Schema:**
+
+```tsx
+// File: src/config/env.validation.ts
+import { plainToInstance } from 'class-transformer';
+import { IsEnum, IsNumber, IsString, validateSync } from 'class-validator';
+
+enum Environment {
+  Development = 'development',
+  Production = 'production',
+  Test = 'test',
+}
+
+class EnvironmentVariables {
+  @IsEnum(Environment)
+  NODE_ENV: Environment;
+
+  @IsNumber()
+  DB_PORT: number;
+
+  @IsString()
+  DB_HOST: string;
+
+  @IsString()
+  DB_USERNAME: string;
+
+  @IsString()
+  DB_PASSWORD: string;
+
+  @IsString()
+  DB_NAME: string;
+
+  @IsNumber()
+  APP_PORT: number;
+}
+
+export function validate(config: Record<string, unknown>) {
+  const validatedConfig = plainToInstance(EnvironmentVariables, config, {
+    enableImplicitConversion: true,
+  });
+
+  const errors = validateSync(validatedConfig, {
+    skipMissingProperties: false,
+  });
+
+  if (errors.length > 0) {
+    throw new Error(errors.toString());
+  }
+
+  return validatedConfig;
+}
+```
+
+### **Update ConfigModule:**
+
+```tsx
+ConfigModule.forRoot({
+  validate, // Add validation
+  isGlobal: true,
+  envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+});
+```
+
+---
+
+## **📋 PART 6: ORGANIZING CONFIGURATION FILES**
+
+### **Project Structure:**
+
+```
+project/
+├── .env                    # Base environment (optional)
+├── .env.development       # Development environment
+├── .env.test              # Testing environment
+├── .env.production        # Production environment
+├── .env.example           # Example file (safe to commit)
+├── src/
+│   ├── config/
+│   │   ├── config.service.ts
+│   │   ├── env.validation.ts
+│   │   ├── database.config.ts
+│   │   └── app.config.ts
+│   └── ...
+└── package.json
+
+```
+
+### **Configuration Module:**
+
+```tsx
+// File: src/config/config.module.ts
+import { Global, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { validate } from './env.validation';
+import { AppConfigService } from './config.service';
+
+@Global()
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      validate,
+      isGlobal: true,
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+    }),
+  ],
+  providers: [AppConfigService],
+  exports: [AppConfigService],
+})
+export class CustomConfigModule {}
+```
+
+---
+
+## **📋 PART 7: TESTING WITH ENVIRONMENT VARIABLES**
+
+### **Test Setup:**
+
+```tsx
+// File: test/setup.ts
+import { config } from 'dotenv';
+
+// Load test environment variables
+config({ path: '.env.test' });
+```
+
+### **package.json Test Scripts:**
+
+```json
+{
+  "scripts": {
+    "test": "cross-env NODE_ENV=test jest",
+    "test:e2e": "cross-env NODE_ENV=test jest --config ./test/jest-e2e.json",
+    "test:cov": "cross-env NODE_ENV=test jest --coverage"
+  },
+  "jest": {
+    "setupFiles": ["<rootDir>/test/setup.ts"]
+  }
+}
+```
+
+### **Testing Different Environments:**
+
+```bash
+# Run tests with test environment
+npm run test
+
+# Run development server
+npm run start:dev
+
+# Run production build
+npm run start:prod
+
+```
+
+---
+
+## **📋 PART 8: SECURITY BEST PRACTICES**
+
+### **DO:**
+
+✅ Use different `.env` files for each environment
+
+✅ Add `.env*` to `.gitignore`
+
+✅ Create `.env.example` with placeholder values
+
+✅ Use strong passwords for production
+
+✅ Validate environment variables
+
+✅ Use environment-specific database instances
+
+### **DON'T:**
+
+❌ Commit `.env` files to version control
+
+❌ Use the same database for development and production
+
+❌ Store production passwords in development environment
+
+❌ Log sensitive environment variables
+
+❌ Hardcode any credentials in your code
+
+---
+
+## **📋 PART 9: COMPLETE WORKING EXAMPLE**
+
+### **Final `app.module.ts`:**
+
+```tsx
+// File: src/app.module.ts
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { validate } from './config/env.validation';
+
+@Module({
+  imports: [
+    // 1. Configuration Module
+    ConfigModule.forRoot({
+      validate, // Validate environment variables
+      isGlobal: true, // Available in all modules
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+    }),
+
+    // 2. Database Module (using async configuration)
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST', 'localhost'),
+        port: configService.get<number>('DB_PORT', 5432),
+        username: configService.get<string>('DB_USERNAME', 'postgres'),
+        password: configService.get<string>('DB_PASSWORD', ''),
+        database: configService.get<string>('DB_NAME', 'nest_db'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        logging: configService.get<string>('NODE_ENV') === 'development',
+      }),
+      inject: [ConfigService],
+    }),
+
+    // 3. Feature Modules
+    // ProductsModule,
+    // UsersModule,
+    // etc...
+  ],
+})
+export class AppModule {}
+```
+
+### **Final `package.json` Scripts:**
+
+```json
+{
+  "scripts": {
+    "start": "cross-env NODE_ENV=development nest start",
+    "start:dev": "cross-env NODE_ENV=development nest start --watch",
+    "start:prod": "cross-env NODE_ENV=production node dist/main",
+    "build": "nest build",
+    "test": "cross-env NODE_ENV=test jest",
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
+    "test:cov": "cross-env NODE_ENV=test jest --coverage",
+    "lint": "eslint \\"{src,apps,libs,test}/**/*.ts\\" --fix"
+  }
+}
+
+```
+
+---
+
+## **📋 PART 10: TROUBLESHOOTING**
+
+### **Common Issues:**
+
+1. **"Environment variable not found"**
+   - Check `.env` file exists
+   - Verify variable names match
+   - Restart the application
+2. **"Cross-env not working"**
+   - Install cross-env: `npm install cross-env --save-dev`
+   - Use correct syntax in package.json
+3. **"Wrong .env file loaded"**
+   - Check `NODE_ENV` value
+   - Verify `envFilePath` configuration
+4. **"Validation errors"**
+   - Check variable types in `.env` file
+   - Ensure required variables are present
+
+### **Debugging Commands:**
+
+```bash
+# Check current NODE_ENV
+echo $NODE_ENV  # Linux/Mac
+echo %NODE_ENV% # Windows
+
+# List all environment variables
+printenv  # Linux/Mac
+set       # Windows
+
+# Test with specific environment
+cross-env NODE_ENV=test npm run start
+
+```
+
+---
+
+## **🎯 KEY TAKEAWAYS:**
+
+✅ **Use `.env` files** for sensitive configuration
+
+✅ **Never commit** `.env` files to version control
+
+✅ **Use `@nestjs/config`** for proper integration
+
+✅ **Validate** environment variables
+
+✅ **Use `cross-env`** for cross-platform compatibility
+
+✅ **Different environments** need different configurations
+
+✅ **ConfigService** is the recommended way to access env variables
+
+**You now have a secure, environment-aware NestJS application!** 🎉
+
+</aside>
