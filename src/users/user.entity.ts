@@ -22,7 +22,11 @@ export class User {
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({
+    type: 'varchar',
+    length: 255, // Also set a max length at database level
+    nullable: true, // Keep this temporarily until you fix your database issue
+  })
   password: string;
 
   @Column({ type: 'enum', enum: UserType, default: UserType.USER })

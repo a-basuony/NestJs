@@ -5459,3 +5459,640 @@ src/
 ✅ **Database Tables** - Three tables with foreign key relationships
 
 **You now have a fully relational database schema with Users, Products, and Reviews!** 🎉
+
+# **Complete User Authentication Guide with NestJS**
+
+## **📋 PART 1: USER REGISTRATION (SIGNUP)**
+
+### **Step 1: Create Register DTO**
+
+```typescript
+// File: src/users/dtos/register.dto.ts
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  MaxLength,
+  IsOptional,
+} from 'class-validator';
+
+export class RegisterDto {
+  @IsEmail()
+  @MaxLength(250)
+  email: string;
+
+  @IsString()
+  @MinLength(6)
+  password: string;
+
+  @IsString()
+  @IsOptional() // Optional field
+  @MinLength(2)
+  @MaxLength(150)
+  username?: string;
+}
+```
+
+### **Step 2: Install Required Packages**
+
+```bash
+# For password hashing
+npm install bcryptjs
+npm install @types/bcryptjs --save-dev
+
+# For JWT (coming in next lesson)
+npm install @nestjs/jwt @nestjs/passport passport passport-jwt
+npm install @types/passport-jwt --save-dev
+```
+
+### **Step 3: Update User Service - Register Method**
+
+```typescript
+// File: src/users/users.service.ts
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './user.entity';
+import * as bcrypt from 'bcryptjs';
+import { RegisterDto } from './dtos/register.dto';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+  ) {}
+
+  /**
+   * Create new user account
+   * @param registerDto - User registration data
+   * @returns Created user object
+   */
+  async register(registerDto: RegisterDto): Promise<User> {
+    // 1. Check if user already exists with this email
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: registerDto.email },
+    });
+
+    // 2. If user exists, throw error
+    if (existingUser) {
+      throw new BadRequestException('User with this email already exists');
+    }
+
+    // 3. Hash the password
+    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+
+    // 4. Create new user object
+    const newUser = this.usersRepository.create({
+      email: registerDto.email,
+      password: hashedPassword, // Store hashed password, not plain text!
+      username: registerDto.username,
+      // userType and isAccountVerified will use defaults from entity
+    });
+
+    // 5. Save user to database
+    const savedUser = await this.usersRepository.save(newUser);
+
+    // 6. Remove password from response (security)
+    const { password, ...userWithoutPassword } = savedUser;
+
+    return userWithoutPassword as User;
+  }
+}
+```
+
+### **Step 4: Update User Controller - Register Endpoint**
+
+```typescript
+// File: src/users/users.controller.ts
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { UsersService } from './users.service';
+import { RegisterDto } from './dtos/register.dto';
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  /**
+   * Register new user
+   * POST /users/register
+   */
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED) // Returns 201 Created status
+  async register(@Body() registerDto: RegisterDto) {
+    return this.usersService.register(registerDto);
+  }
+}
+```
+
+---
+
+## **📋 PART 2: TESTING REGISTRATION**
+
+### **Test with REST Client:**
+
+```http
+### Register User (with username)
+POST http://localhost:3000/users/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "password123",
+  "username": "john_doe"
+}
+
+### Register User (without username - optional)
+POST http://localhost:3000/users/register
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "securepass456"
+}
+
+### Register with existing email (should fail)
+POST http://localhost:3000/users/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",  // Already exists
+  "password": "anotherpassword"
+}
+```
+
+### **Expected Responses:**
+
+```json
+// Success Response (201 Created)
+{
+  "id": 1,
+  "email": "john@example.com",
+  "username": "john_doe",
+  "userType": "customer",
+  "isAccountVerified": false,
+  "createdAt": "2024-01-01T10:00:00.000Z",
+  "updatedAt": "2024-01-01T10:00:00.000Z"
+}
+
+// Error Response (400 Bad Request)
+{
+  "statusCode": 400,
+  "message": "User with this email already exists",
+  "error": "Bad Request"
+}
+```
+
+---
+
+## **📋 PART 3: PASSWORD SECURITY**
+
+### **Why Hash Passwords?**
+
+```
+❌ BAD: Store plain password in database
+✅ GOOD: Store hashed password (one-way encryption)
+
+User Password: "mysecret123"
+↓ Hashing (bcrypt)
+Stored in DB: "$2a$10$N9qo8uLOickgx2ZMRZoMy.Mrq..."
+```
+
+### **bcryptjs Methods:**
+
+```typescript
+import * as bcrypt from 'bcryptjs';
+
+// Hash password
+const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+// Verify password (for login)
+const isPasswordValid = await bcrypt.compare(plainPassword, hashedPassword);
+```
+
+### **Password Security Rules:**
+
+✅ **Minimum 6 characters**  
+✅ **No maximum limit** (bcrypt handles up to 72 chars)  
+✅ **Include numbers and letters**  
+✅ **Store only hashed version**  
+✅ **Never log passwords**
+
+---
+
+## **📋 PART 4: COMPLETE USER SERVICE WITH ALL METHODS**
+
+### **Updated User Service:**
+
+```typescript
+// File: src/users/users.service.ts
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './user.entity';
+import * as bcrypt from 'bcryptjs';
+import { RegisterDto } from './dtos/register.dto';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+  ) {}
+
+  // CREATE - Register new user
+  async register(registerDto: RegisterDto): Promise<Partial<User>> {
+    // Check if email exists
+    const existingUser = await this.findByEmail(registerDto.email);
+    if (existingUser) {
+      throw new BadRequestException('Email already registered');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+
+    // Create user
+    const newUser = this.usersRepository.create({
+      email: registerDto.email,
+      password: hashedPassword,
+      username: registerDto.username,
+    });
+
+    // Save to database
+    const savedUser = await this.usersRepository.save(newUser);
+
+    // Remove password from response
+    return this.removePassword(savedUser);
+  }
+
+  // READ - Find user by ID
+  async findById(id: number): Promise<Partial<User>> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return this.removePassword(user);
+  }
+
+  // READ - Find user by email (for login)
+  async findByEmail(email: string): Promise<User | null> {
+    return await this.usersRepository.findOne({
+      where: { email },
+      select: ['id', 'email', 'password', 'username', 'userType'], // Include password for verification
+    });
+  }
+
+  // READ - Get all users
+  async findAll(): Promise<Partial<User>[]> {
+    const users = await this.usersRepository.find();
+    return users.map((user) => this.removePassword(user));
+  }
+
+  // UPDATE - Update user
+  async update(id: number, updateData: Partial<User>): Promise<Partial<User>> {
+    const user = await this.findById(id);
+
+    // If updating password, hash it
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    await this.usersRepository.update(id, updateData);
+
+    // Return updated user
+    const updatedUser = await this.findById(id);
+    return updatedUser;
+  }
+
+  // DELETE - Remove user
+  async remove(id: number): Promise<{ message: string }> {
+    await this.findById(id); // Check if exists
+    await this.usersRepository.delete(id);
+    return { message: `User with ID ${id} deleted successfully` };
+  }
+
+  // Helper: Remove password from user object
+  private removePassword(user: User): Partial<User> {
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+
+  // Helper: Validate password
+  async validatePassword(user: User, password: string): Promise<boolean> {
+    return await bcrypt.compare(password, user.password);
+  }
+}
+```
+
+---
+
+## **📋 PART 5: VALIDATION AND ERROR HANDLING**
+
+### **Enhanced Register DTO with Custom Messages:**
+
+```typescript
+// File: src/users/dtos/register.dto.ts
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  MaxLength,
+  IsOptional,
+} from 'class-validator';
+
+export class RegisterDto {
+  @IsEmail({}, { message: 'Please provide a valid email address' })
+  @MaxLength(250, { message: 'Email cannot be longer than 250 characters' })
+  email: string;
+
+  @IsString({ message: 'Password must be a string' })
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  password: string;
+
+  @IsString({ message: 'Username must be a string' })
+  @IsOptional()
+  @MinLength(2, { message: 'Username must be at least 2 characters long' })
+  @MaxLength(150, { message: 'Username cannot be longer than 150 characters' })
+  username?: string;
+}
+```
+
+### **Custom Exception Filter for User Errors:**
+
+```typescript
+// File: src/users/exceptions/user-exception.filter.ts
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  BadRequestException,
+} from '@nestjs/common';
+import { Response } from 'express';
+
+@Catch(BadRequestException)
+export class UserExceptionFilter implements ExceptionFilter {
+  catch(exception: BadRequestException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const status = exception.getStatus();
+    const exceptionResponse = exception.getResponse();
+
+    response.status(status).json({
+      success: false,
+      error: 'Registration Failed',
+      message:
+        typeof exceptionResponse === 'string'
+          ? exceptionResponse
+          : (exceptionResponse as any).message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+```
+
+---
+
+## **📋 PART 6: DOCUMENTATION WITH JSDoc**
+
+### **Documenting the Service Method:**
+
+```typescript
+/**
+ * Register a new user account
+ * @param {RegisterDto} registerDto - User registration data
+ * @returns {Promise<Partial<User>>} Created user without password
+ * @throws {BadRequestException} If email already exists
+ * @example
+ * const user = await usersService.register({
+ *   email: 'test@example.com',
+ *   password: 'password123',
+ *   username: 'testuser'
+ * });
+ */
+async register(registerDto: RegisterDto): Promise<Partial<User>> {
+  // Implementation
+}
+```
+
+### **Benefits of JSDoc:**
+
+✅ **Auto-completion** in VS Code  
+✅ **Type hints** during development  
+✅ **API documentation** generation  
+✅ **Better code understanding** for team
+
+---
+
+## **📋 PART 7: TESTING STRATEGY**
+
+### **Unit Test for Register Method:**
+
+```typescript
+// File: src/users/users.service.spec.ts
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { UsersService } from './users.service';
+import { User } from './user.entity';
+import { BadRequestException } from '@nestjs/common';
+
+describe('UsersService', () => {
+  let service: UsersService;
+  let mockUserRepository;
+
+  beforeEach(async () => {
+    mockUserRepository = {
+      findOne: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: mockUserRepository,
+        },
+      ],
+    }).compile();
+
+    service = module.get<UsersService>(UsersService);
+  });
+
+  describe('register', () => {
+    it('should create a new user when email is unique', async () => {
+      const registerDto = {
+        email: 'test@example.com',
+        password: 'password123',
+        username: 'testuser',
+      };
+
+      mockUserRepository.findOne.mockResolvedValue(null); // No existing user
+      mockUserRepository.create.mockReturnValue(registerDto);
+      mockUserRepository.save.mockResolvedValue({ id: 1, ...registerDto });
+
+      const result = await service.register(registerDto);
+
+      expect(result).toHaveProperty('id');
+      expect(mockUserRepository.save).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when email already exists', async () => {
+      const registerDto = {
+        email: 'existing@example.com',
+        password: 'password123',
+      };
+
+      mockUserRepository.findOne.mockResolvedValue({
+        id: 1,
+        email: 'existing@example.com',
+      });
+
+      await expect(service.register(registerDto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+});
+```
+
+---
+
+## **📋 PART 8: COMPLETE PROJECT STRUCTURE**
+
+```
+src/
+├── main.ts
+├── app.module.ts
+├── users/
+│   ├── users.module.ts
+│   ├── users.controller.ts
+│   ├── users.service.ts
+│   ├── user.entity.ts
+│   ├── dtos/
+│   │   ├── register.dto.ts
+│   │   └── login.dto.ts      # Coming next
+│   ├── exceptions/
+│   │   └── user-exception.filter.ts
+│   └── __tests__/
+│       └── users.service.spec.ts
+├── products/
+│   └── ...
+└── reviews/
+    └── ...
+```
+
+---
+
+## **📋 PART 9: SECURITY BEST PRACTICES**
+
+### **DO:**
+
+✅ **Hash passwords** with bcrypt  
+✅ **Validate input** with class-validator  
+✅ **Remove passwords** from responses  
+✅ **Use HTTPS** in production  
+✅ **Rate limit** registration attempts  
+✅ **Log security events**
+
+### **DON'T:**
+
+❌ **Store plain passwords**  
+❌ **Return passwords** in API responses  
+❌ **Use weak passwords** (enforce rules)  
+❌ **Log sensitive data**  
+❌ **Allow unlimited registration attempts**
+
+### **Additional Security Measures:**
+
+```typescript
+// Add to RegisterDto for production
+@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{6,}$/, {
+  message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+})
+password: string;
+```
+
+---
+
+## **📋 PART 10: NEXT STEPS - LOGIN & JWT**
+
+### **Coming in Next Lesson:**
+
+1. **Login DTO** - Email and password validation
+2. **Login Service Method** - Verify credentials
+3. **JWT Generation** - Create access tokens
+4. **Auth Guard** - Protect routes
+5. **Current User** - Get logged-in user info
+
+### **Preparation for Next Lesson:**
+
+```typescript
+// File: src/users/dtos/login.dto.ts (Preview)
+export class LoginDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(6)
+  password: string;
+}
+
+// File: src/auth/ (Coming soon)
+// Will handle JWT tokens, authentication guards, etc.
+```
+
+---
+
+## **🎯 KEY TAKEAWAYS FROM THIS LESSON:**
+
+✅ **User Registration** - Create new accounts  
+✅ **Password Hashing** - Secure storage with bcrypt  
+✅ **Input Validation** - DTOs with class-validator  
+✅ **Error Handling** - Proper exceptions for duplicate emails  
+✅ **Security** - Never store or return plain passwords  
+✅ **Documentation** - JSDoc for better code understanding
+
+### **What You Built:**
+
+```
+POST /users/register → Validates input → Checks email uniqueness →
+Hashes password → Creates user → Returns user (without password)
+```
+
+### **Database After Registration:**
+
+```sql
+-- users table
+id | email           | password (hashed)           | username | user_type
+1  | john@email.com | $2a$10$N9qo8u... | john_doe | customer
+2  | jane@email.com | $2a$10$Mjf8kP... | NULL     | customer
+```
+
+---
+
+## **🔜 PREVIEW OF NEXT LESSONS:**
+
+### **Lesson 2: Login with JWT**
+
+- Verify email/password
+- Generate JWT tokens
+- Return access token to user
+
+### **Lesson 3: Authentication Guards**
+
+- Protect routes
+- Validate JWT tokens
+- Get current user from token
+
+### **Lesson 4: User Profile & Update**
+
+- Get user profile
+- Update user information
+- Change password
+
+**You now have a secure user registration system! Ready for login functionality!** 🎉

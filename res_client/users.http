@@ -1,2 +1,13 @@
-### GET products
+### GET Users
 GET http://localhost:3000/api/users
+
+
+### Create User
+POST  http://localhost:3000/api/users/auth/register
+Content-Type: application/json
+
+{
+    "email": "ahmed8@gmail.com",
+    "password":"1234",
+    "username": "ahmed"
+}
