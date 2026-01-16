@@ -4,7 +4,7 @@ import { ProductsModule } from './products/products.module';
 import { UsersModule } from './users/users.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { Product } from './products/product.entity';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -13,18 +13,20 @@ import { ConfigModule } from '@nestjs/config';
     ReviewsModule,
     ConfigModule.forRoot({
       isGlobal: true, // makes config available everywhere
-      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`, // loads .env.development
     }),
     TypeOrmModule.forRootAsync({
-      inject: [ConfigModule],
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: '12345',
-      database: 'nest_db',
-      entities: [Product],
-      synchronize: true,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        entities: [Product],
+        synchronize: process.env.NODE_ENV !== 'production',
+      }),
     }),
   ],
 })

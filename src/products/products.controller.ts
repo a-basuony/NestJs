@@ -12,10 +12,14 @@ import {
 import { CreateProductDto } from './dtos/create-product.dto';
 import { UpdateProductDto } from './dtos/update-product.dto';
 import { ProductsService } from './products.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('api/products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly config: ConfigService,
+  ) {}
 
   // POST : ~/api/products
   @Post()
@@ -29,6 +33,9 @@ export class ProductsController {
   // GET : ~/api/products
   @Get()
   public GetAllProducts() {
+    const sample = this.config.get<string>('SAMPLE');
+    const sample1 = process.env.SAMPLE; // not recommended in Nestjs
+    console.log(sample, sample1);
     return this.productsService.findAll();
   }
 
