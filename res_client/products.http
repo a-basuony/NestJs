@@ -1,11 +1,11 @@
 ### GET products
-GET http://localhost:3000/api/products
+GET http://localhost:5432/api/products
 
 ### GET single products
-GET http://localhost:3000/api/products/1
+GET http://localhost:5432/api/products/1
 
 ### Post product
-Post http://localhost:3000/api/products
+Post http://localhost:5432/api/products
 Content-Type: application/json
 
 {
@@ -15,7 +15,7 @@ Content-Type: application/json
 }
 
 ### Update product
-PUT http://localhost:3000/api/products/1
+PUT http://localhost:5432/api/products/1
 Content-Type: application/json
 
 {
@@ -24,4 +24,4 @@ Content-Type: application/json
 }
 
 ### Update product
-DELETE http://localhost:3000/api/products/1
+DELETE http://localhost:5432/api/products/1

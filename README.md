@@ -6096,3 +6096,4 @@ id | email           | password (hashed)           | username | user_type
 - Change password
 
 **You now have a secure user registration system! Ready for login functionality!** 🎉
+HTTP Status Codes
