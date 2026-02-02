@@ -1,4 +1,4 @@
-**Lecture Summary: NestJS Basics - Modules and Controllers**
+**Summary: NestJS  - Modules and Controllers**
 
 ---
 
