@@ -9,7 +9,7 @@ export class UsersController {
 
   /**
    * Register new user
-   * POST /auth/register
+   * POST /api/users/auth/register
    */
   @Post('/auth/register')
   public register(@Body() body: RegisterDto) {
@@ -22,7 +22,7 @@ export class UsersController {
    * @returns JWT (access token)
    */
   @Post('/auth/login')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.OK) // Set the response status code to 200 OK for successful login
   public login(@Body() body: LoginDto) {
     return this.usersService.login(body);
   }

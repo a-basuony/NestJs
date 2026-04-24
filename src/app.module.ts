@@ -15,19 +15,11 @@ import { Review } from './reviews/review.entity';
     ReviewsModule,
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        // Debug log to verify connection parameters
-        console.log('🔍 Connecting to DB:', {
-          host: configService.get('DB_HOST'),
-          port: configService.get('DB_PORT'),
-          database: configService.get('DB_DATABASE'),
-          user: configService.get('DB_USERNAME'),
-        });
-
         return {
           type: 'postgres',
           host: configService.get<string>('DB_HOST'),
@@ -36,18 +28,11 @@ import { Review } from './reviews/review.entity';
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_DATABASE'),
           entities: [Product, User, Review],
-          synchronize: true, // Only for development – auto-creates tables
+          synchronize: process.env.NODE_ENV === 'development', // Only for development – auto-creates tables
+          // if in production synchronize should be false and migrations should be used instead
         };
       },
     }),
   ],
 })
 export class AppModule {}
-
-// Optional quick debug (remove after fixing)
-console.log(
-  'DB password type:',
-  typeof process.env.DB_PASSWORD,
-  'value:',
-  process.env.DB_PASSWORD,
-);
