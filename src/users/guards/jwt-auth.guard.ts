@@ -21,7 +21,7 @@ export class JWTAuthGuard implements CanActivate {
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
-      throw new UnauthorizedException('No token provided');
+      throw new UnauthorizedException('access denied, no token provided');
     }
 
     const [type, token] = authHeader.split(' ') ?? [];

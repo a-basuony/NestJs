@@ -13,6 +13,9 @@ import { LoginDto } from './dtos/login.dto';
 import { JWTAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { JWTPayloadType } from 'src/utils/types';
+import { Roles } from './decorators/roles.decorator';
+import { UserType } from 'src/utils/enums';
+import { RolesGuard } from './guards/roles.guard';
 
 @Controller('/api/users')
 export class UsersController {
@@ -48,5 +51,12 @@ export class UsersController {
   @UseGuards(JWTAuthGuard) // Protect this route with JWT authentication
   getCurrentUser(@CurrentUser() payload: JWTPayloadType) {
     return this.usersService.getCurrentUser(payload.id);
+  }
+
+  @Get('all')
+  @Roles(UserType.ADMIN) // Only allow access to users with the ADMIN role
+  @UseGuards(JWTAuthGuard, RolesGuard) // Protect this route with JWT authentication and role-based access control
+  getAllUsers() {
+    return this.usersService.getAllUsers();
   }
 }

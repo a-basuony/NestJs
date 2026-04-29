@@ -97,6 +97,16 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
+  /**
+   *  Get all users
+   * This should be accessible only by admin users
+   */
+  public async getAllUsers(): Promise<User[]> {
+    const users = await this.userRepository.find({
+      select: ['id', 'email', 'userType', 'createdAt', 'updatedAt'],
+    });
+    return users;
+  }
 
   private generateJWT(payload: JWTPayloadType): Promise<string> {
     return this.jwtService.signAsync(payload);
