@@ -2,7 +2,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { RegisterDto } from './dtos/register.dto';
-import { BadRequestException, Body, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { LoginDto } from './dtos/login.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -86,8 +90,11 @@ export class UsersService {
    * @throws BadRequestException if the user with the specified ID is not found
    */
   public async getCurrentUser(userId: number): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) throw new BadRequestException('User not found');
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'email', 'userType', 'createdAt', 'updatedAt'],
+    });
+    if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
