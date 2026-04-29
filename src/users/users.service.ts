@@ -79,6 +79,18 @@ export class UsersService {
     return { accessToken };
   }
 
+  /**
+   *  Get current user details
+   * @param userId  - ID of the user to retrieve details for
+   * @returns  User object containing the details of the requested user
+   * @throws BadRequestException if the user with the specified ID is not found
+   */
+  public async getCurrentUser(userId: number): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+    return user;
+  }
+
   private generateJWT(payload: JWTPayloadType): Promise<string> {
     return this.jwtService.signAsync(payload);
   }

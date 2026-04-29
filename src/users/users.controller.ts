@@ -1,7 +1,18 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
+import { JWTAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import type { JWTPayloadType } from 'src/utils/types';
 
 @Controller('/api/users')
 export class UsersController {
@@ -11,7 +22,7 @@ export class UsersController {
    * Register new user
    * POST /api/users/auth/register
    */
-  @Post('/auth/register')
+  @Post('auth/register')
   public register(@Body() body: RegisterDto) {
     return this.usersService.register(body);
   }
@@ -21,9 +32,21 @@ export class UsersController {
    * @param body data for login user account
    * @returns JWT (access token)
    */
-  @Post('/auth/login')
+  @Post('auth/login')
   @HttpCode(HttpStatus.OK) // Set the response status code to 200 OK for successful login
   public login(@Body() body: LoginDto) {
     return this.usersService.login(body);
+  }
+
+  /**
+   *  Get current user details
+   * GET /api/users/current-user
+   * @param payload  JWT payload extracted from the token, containing user information
+   * @returns  User object
+   */
+  @Get('current-user')
+  @UseGuards(JWTAuthGuard) // Protect this route with JWT authentication
+  getCurrentUser(@CurrentUser() payload: JWTPayloadType) {
+    return this.usersService.getCurrentUser(payload.id);
   }
 }

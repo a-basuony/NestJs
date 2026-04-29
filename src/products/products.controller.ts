@@ -33,9 +33,6 @@ export class ProductsController {
   // GET : ~/api/products
   @Get()
   public GetAllProducts() {
-    const sample = this.config.get<string>('SAMPLE');
-    const sample1 = process.env.SAMPLE; // not recommended in Nestjs
-    console.log(sample, sample1);
     return this.productsService.findAll();
   }
 
