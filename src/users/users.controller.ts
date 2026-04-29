@@ -1,9 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -16,6 +19,7 @@ import type { JWTPayloadType } from 'src/utils/types';
 import { Roles } from './decorators/roles.decorator';
 import { UserType } from 'src/utils/enums';
 import { RolesGuard } from './guards/roles.guard';
+import { UpdateUserDto } from './dtos/update-user.dto';
 
 @Controller('/api/users')
 export class UsersController {
@@ -58,5 +62,30 @@ export class UsersController {
   @UseGuards(JWTAuthGuard, RolesGuard) // Protect this route with JWT authentication and role-based access control
   getAllUsers() {
     return this.usersService.getAllUsers();
+  }
+
+  @Patch('update')
+  @Roles(UserType.ADMIN, UserType.USER) // Allow access to both ADMIN and USER roles
+  @UseGuards(JWTAuthGuard, RolesGuard) // Protect this route with JWT authentication and role-based access control
+  updateUser(
+    @CurrentUser() payload: JWTPayloadType,
+    @Body() body: UpdateUserDto,
+  ) {
+    return this.usersService.updateUser(payload.id, body);
+  }
+  /**
+   *  Delete a user by ID. Only the user themselves or an admin can delete the account.
+   * @param userId - ID of the user to be deleted
+   * @param payload  - JWT payload containing the ID and user type of the requester
+   * @returns  A message indicating successful deletion or an error if the user is not found or the requester is not authorized
+   */
+  @Delete(':id')
+  @Roles(UserType.ADMIN, UserType.USER) // Allow access to both ADMIN and USER roles
+  @UseGuards(JWTAuthGuard, RolesGuard) // Protect this route with JW`T authentication and role-based access control
+  deleteUser(
+    @CurrentUser() payload: JWTPayloadType,
+    @Param('id') userId: number,
+  ) {
+    return this.usersService.deleteUser(userId, payload);
   }
 }
