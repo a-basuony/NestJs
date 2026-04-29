@@ -37,7 +37,9 @@ export class RolesGuard implements CanActivate {
     // 3. Check if the user's role matches any of the required roles
     const hasRole = requiredRoles.some((role) => user.userType === role);
     if (!hasRole) {
-      throw new ForbiddenException('Insufficient permissions');
+      throw new ForbiddenException(
+        'User does not have the required role | Access denied | You do not have permission to access this resource',
+      );
     }
 
     return true;
