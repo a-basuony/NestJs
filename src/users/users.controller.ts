@@ -1,5 +1,6 @@
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -55,9 +56,9 @@ export class UsersController {
    */
   @Get('current-user')
   @UseGuards(JWTAuthGuard) // Protect this route with JWT authentication
-  @UseInterceptors(LoggingInterceptor) // Apply the logging interceptor to this route
+  // @UseInterceptors(LoggingInterceptor) // Apply the logging interceptor to this route
+  @UseInterceptors(ClassSerializerInterceptor) // Apply the ClassSerializerInterceptor to this route
   getCurrentUser(@CurrentUser() payload: JWTPayloadType) {
-    console.log('📌 Inside route handler');
     return this.usersService.getCurrentUser(payload.id);
   }
 

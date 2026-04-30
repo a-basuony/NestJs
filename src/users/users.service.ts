@@ -95,7 +95,7 @@ export class UsersService {
   public async getCurrentUser(userId: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'email', 'userType', 'createdAt', 'updatedAt'],
+      // select: ['id', 'email', 'userType', 'createdAt', 'updatedAt'], //use EXclude instead of this Exclude password and other sensitive fields from the query results
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
@@ -106,7 +106,7 @@ export class UsersService {
    */
   public async getAllUsers(): Promise<User[]> {
     const users = await this.userRepository.find({
-      select: ['id', 'email', 'userType', 'createdAt', 'updatedAt'],
+      // select: ['id', 'email', 'userType', 'createdAt', 'updatedAt'], // we use Exclude in the entity to exclude password and other sensitive fields from the query results
     });
     return users;
   }

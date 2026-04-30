@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import { Product } from 'src/products/product.entity';
 import { Review } from 'src/reviews/review.entity';
 import { CURRENT_TIMESTAMP } from 'src/utils/constants';
@@ -20,6 +21,7 @@ export class User {
   username: string;
 
   @Column({ type: 'varchar', length: 250, unique: true, nullable: true })
+  // @Exclude() //for testing Exclude email from serialization to prevent it from being exposed in API responses
   email: string;
 
   @Column({
@@ -27,6 +29,7 @@ export class User {
     length: 255, // Also set a max length at database level
     nullable: true, // Keep this temporarily until you fix your database issue
   })
+  @Exclude() // Exclude password from serialization to prevent it from being exposed in API responses
   password: string;
 
   @Column({ type: 'enum', enum: UserType, default: UserType.USER })
