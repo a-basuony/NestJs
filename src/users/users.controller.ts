@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RegisterDto } from './dtos/register.dto';
@@ -20,6 +21,7 @@ import { Roles } from './decorators/roles.decorator';
 import { UserType } from 'src/utils/enums';
 import { RolesGuard } from './guards/roles.guard';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { LoggingInterceptor } from './interceptors/logging.interceptor';
 
 @Controller('/api/users')
 export class UsersController {
@@ -53,7 +55,9 @@ export class UsersController {
    */
   @Get('current-user')
   @UseGuards(JWTAuthGuard) // Protect this route with JWT authentication
+  @UseInterceptors(LoggingInterceptor) // Apply the logging interceptor to this route
   getCurrentUser(@CurrentUser() payload: JWTPayloadType) {
+    console.log('📌 Inside route handler');
     return this.usersService.getCurrentUser(payload.id);
   }
 
