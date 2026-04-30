@@ -22,7 +22,7 @@ import { Roles } from './decorators/roles.decorator';
 import { UserType } from 'src/utils/enums';
 import { RolesGuard } from './guards/roles.guard';
 import { UpdateUserDto } from './dtos/update-user.dto';
-import { LoggingInterceptor } from './interceptors/logging.interceptor';
+// import { LoggingInterceptor } from './interceptors/logging.interceptor';
 
 @Controller('/api/users')
 export class UsersController {
