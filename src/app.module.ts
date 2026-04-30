@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ProductsModule } from './products/products.module';
@@ -33,6 +33,13 @@ import { Review } from './reviews/review.entity';
         };
       },
     }),
+  ],
+  providers: [
+    {
+      provide: 'APP_INTERCEPTOR',
+      // useClass: LoggingInterceptor, // Apply the logging interceptor globally to log all requests and responses
+      useClass: ClassSerializerInterceptor, // Apply the ClassSerializerInterceptor globally to handle serialization of entities with @Exclude and other class-transformer decorators
+    },
   ],
 })
 export class AppModule {}
