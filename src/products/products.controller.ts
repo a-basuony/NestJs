@@ -7,12 +7,19 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
 import { CreateProductDto } from './dtos/create-product.dto';
 import { UpdateProductDto } from './dtos/update-product.dto';
 import { ProductsService } from './products.service';
 import { ConfigService } from '@nestjs/config';
+import { Roles } from 'src/users/decorators/roles.decorator';
+import { UserType } from 'src/utils/enums';
+import { JWTAuthGuard } from 'src/users/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/users/decorators/current-user.decorator';
+import { RolesGuard } from 'src/users/guards/roles.guard';
+import type { JWTPayloadType } from 'src/utils/types';
 
 @Controller('api/products')
 export class ProductsController {
@@ -23,11 +30,15 @@ export class ProductsController {
 
   // POST : ~/api/products
   @Post()
+  @UseGuards(JWTAuthGuard, RolesGuard)
+  @Roles(UserType.ADMIN)
   public CreateProduct(
-    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    @Body()
     body: CreateProductDto,
+    @CurrentUser()
+    payload: JWTPayloadType,
   ) {
-    return this.productsService.create(body);
+    return this.productsService.create(body, payload.id);
   }
 
   // GET : ~/api/products
