@@ -7,11 +7,12 @@ GET http://localhost:5432/api/products/1
 ### Post product
 Post http://localhost:5432/api/products
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlclR5cGUiOiJ1c2VyIiwiaWF0IjoxNzc4MjcxNDU3LCJleHAiOjE3Nzg4NzYyNTd9.Mx9ZBdQvHydn08L67-3QmW4NQoRcrdBdDyp4Y9Skuus
 
 {
-    "title": "laptop",
-    "description": "new laptop",
-    "price": 120
+    "title": "screen",
+    "description": "new screen",
+    "price": 300
 }
 
 ### Update product
