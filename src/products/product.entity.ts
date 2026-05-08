@@ -32,9 +32,9 @@ export class Product {
   updatedAt: Date;
 
   // relations
-  @OneToMany(() => Review, (review) => review.product)
+  @OneToMany(() => Review, (review) => review.product, { eager: true })
   reviews: Review[];
 
-  @ManyToOne(() => User, (user) => user.products)
+  @ManyToOne(() => User, (user) => user.products, { eager: true })
   user: User;
 }
