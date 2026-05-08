@@ -44,11 +44,10 @@ export class ProductsService {
   /**
    * Get all products
    * @returns list of products with user and reviews relations
+   *
    */
   public findAll() {
-    return this.productRepository.find({
-      relations: { user: true, reviews: true },
-    });
+    return this.productRepository.find();
   }
 
   /**
@@ -57,7 +56,6 @@ export class ProductsService {
   public async findOne(id: number) {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: { user: true, reviews: true },
     });
     if (!product) {
       throw new NotFoundException('Product not found');
@@ -67,6 +65,9 @@ export class ProductsService {
 
   /**
    * Update product
+   * @param id - product id
+   * @param updateProductDto - fields to update
+   * @returns updated product
    */
   public async update(id: number, updateProductDto: UpdateProductDto) {
     const product = await this.findOne(id); // Reuse findOne for validation

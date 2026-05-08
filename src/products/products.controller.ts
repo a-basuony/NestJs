@@ -53,6 +53,8 @@ export class ProductsController {
   }
 
   @Put(':id')
+  @UseGuards(JWTAuthGuard, RolesGuard)
+  @Roles(UserType.ADMIN)
   public updateProduct(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -62,6 +64,8 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @UseGuards(JWTAuthGuard, RolesGuard)
+  @Roles(UserType.ADMIN)
   public deleteProduct(@Param('id', ParseIntPipe) id: number) {
     return this.productsService.delete(id);
   }
