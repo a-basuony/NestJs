@@ -11,7 +11,6 @@ import { ConfigService } from '@nestjs/config';
   imports: [
     UsersModule,
     TypeOrmModule.forFeature([Product]),
-    UsersModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

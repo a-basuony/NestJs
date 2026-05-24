@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
@@ -43,8 +44,8 @@ export class ProductsController {
 
   // GET : ~/api/products
   @Get()
-  public GetAllProducts() {
-    return this.productsService.findAll();
+  public GetAllProducts(@Query('title') title?: string, @Query('minPrice') minPrice?: string , @Query('maxPrice') maxPrice?: string ) {
+    return this.productsService.findAll( title, minPrice, maxPrice);
   }
 
   @Get(':id')

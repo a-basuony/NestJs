@@ -1,11 +1,11 @@
 ### GET products
-GET http://localhost:5432/api/products
+GET http://localhost:3000/api/products?description=phone&minPrice=100&maxPrice=500
 
 ### GET single products
-GET http://localhost:5432/api/products/1
+GET http://localhost:3000/api/products/1
 
 ### Post product
-Post http://localhost:5432/api/products
+Post http://localhost:3000/api/products
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlclR5cGUiOiJ1c2VyIiwiaWF0IjoxNzc4MjcxNDU3LCJleHAiOjE3Nzg4NzYyNTd9.Mx9ZBdQvHydn08L67-3QmW4NQoRcrdBdDyp4Y9Skuus
 
@@ -16,7 +16,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlclR5c
 }
 
 ### Update product
-PUT http://localhost:5432/api/products/1
+PUT http://localhost:3000/api/products/1
 Content-Type: application/json
 
 {
@@ -25,4 +25,4 @@ Content-Type: application/json
 }
 
 ### Update product
-DELETE http://localhost:5432/api/products/1
+DELETE http://localhost:3000/api/products/1
