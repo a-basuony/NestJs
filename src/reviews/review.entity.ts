@@ -23,10 +23,16 @@ export class Review {
 
   // relations
 
-  @ManyToOne(() => Product, (product) => product.reviews)
+  @ManyToOne(() => Product, (product) => product.reviews, {
+    nullable: false,
+    onDelete: 'CASCADE', // when you delete the product , you will delete also the reviews related to that product
+  })
   product: Product; // Which product this review is for
 
-  @ManyToOne(() => User, (user) => user.reviews)
+  @ManyToOne(() => User, (user) => user.reviews, {
+    nullable: false,
+    onDelete: 'CASCADE', // when you delete the user you will delete also the reviews related to that user
+  })
   user: User;
 
   @CreateDateColumn({ type: 'timestamp', default: () => CURRENT_TIMESTAMP })
