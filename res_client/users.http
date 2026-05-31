@@ -1,5 +1,7 @@
 ### GET Users
-GET http://localhost:5432/api/users
+GET http://localhost:3000/api/users/all
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywidXNlclR5cGUiOiJhZG1pbiIsImlhdCI6MTc3OTU5MjU3MSwiZXhwIjoxNzgwMTk3MzcxfQ.r_cws3i1vkVMXJJHbMMeUmGaV1Z7A7PMVmrLFHf6M_Q
 
 
 ### Create User
@@ -7,18 +9,25 @@ POST  http://localhost:3000/api/users/auth/register
 Content-Type: application/json
 
 {
-    "email": "ahmed@gmail.com",
+    "email": "ahmed@test.com",
     "password":"12345",
     "username": "ahmed"
 }
+
+### Delete User
+DELETE   http://localhost:3000/api/users/1
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywidXNlclR5cGUiOiJhZG1pbiIsImlhdCI6MTc3OTU5MjU3MSwiZXhwIjoxNzgwMTk3MzcxfQ.r_cws3i1vkVMXJJHbMMeUmGaV1Z7A7PMVmrLFHf6M_Q
+
+
 
 ### Login User
 POST  http://localhost:3000/api/users/auth/login
 Content-Type: application/json
 
 {
-    "email": "ahmed@test.com",
-    "password":"Pass123"
+    "email": "rawda@test.com",
+    "password":"12345"
 }
 
 

@@ -1,3 +1,15 @@
 ### GET products
-GET http://localhost:5432/api/reviews
+GET http://localhost:3000/api/reviews
+
+
+
+### Post review
+Post http://localhost:3000/api/reviews/1
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywidXNlclR5cGUiOiJhZG1pbiIsImlhdCI6MTc3OTU5Njk5MiwiZXhwIjoxNzgwMjAxNzkyfQ.jlc5F8Hjm9ePudeqwUFvtXQW5Hoa2imTRHdobjcmtco
+
+{
+    "rating": 4,
+    "comment": "nice product"
+}
 

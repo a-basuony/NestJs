@@ -1,5 +1,5 @@
 ### GET products
-GET http://localhost:3000/api/products?description=phone&minPrice=100&maxPrice=500
+GET http://localhost:3000/api/products?title=mouse&minPrice=20&maxPrice=200
 
 ### GET single products
 GET http://localhost:3000/api/products/1
@@ -26,3 +26,27 @@ Content-Type: application/json
 
 ### Update product
 DELETE http://localhost:3000/api/products/1
+
+
+
+### Create product 1
+POST http://localhost:3000/api/products
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywidXNlclR5cGUiOiJhZG1pbiIsImlhdCI6MTc3OTU5MjU3MSwiZXhwIjoxNzgwMTk3MzcxfQ.r_cws3i1vkVMXJJHbMMeUmGaV1Z7A7PMVmrLFHf6M_Q
+
+{
+  "title": "iPhone 13",
+  "description": "used phone in good condition",
+  "price": 450
+}
+
+### Create product 2
+POST http://localhost:3000/api/products
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywidXNlclR5cGUiOiJhZG1pbiIsImlhdCI6MTc3OTU5MjU3MSwiZXhwIjoxNzgwMTk3MzcxfQ.r_cws3i1vkVMXJJHbMMeUmGaV1Z7A7PMVmrLFHf6M_Q
+
+{
+  "title": "Samsung Phone",
+  "description": "android phone with new battery",
+  "price": 320
+}
