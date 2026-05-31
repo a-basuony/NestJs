@@ -23,6 +23,13 @@ export class ReviewsService {
     private readonly usersService: UsersService,
   ) {}
 
+  /**
+   * Create a new review linked to an existing product and authenticated user.
+   * @param dto review rating and comment
+   * @param userId ID of the authenticated user
+   * @param productId ID of the product being reviewed
+   * @returns formatted review response
+   */
   async create(
     dto: CreateReviewDto,
     userId: number,
@@ -42,10 +49,25 @@ export class ReviewsService {
     return this.toReviewResponse(savedReview);
   }
 
+  /**
+   * Find one review by ID.
+   * @param id review ID
+   * @returns formatted review response
+   * @throws NotFoundException when the review does not exist
+   */
   async findOne(id: number): Promise<ReviewResponse> {
     return this.toReviewResponse(await this.findReviewById(id));
   }
 
+  /**
+   * Update a review owned by the authenticated user.
+   * @param id review ID
+   * @param payload JWT payload for the authenticated user
+   * @param dto optional rating and comment updates
+   * @returns formatted updated review response
+   * @throws ForbiddenException when the user does not own the review
+   * @throws NotFoundException when the review does not exist
+   */
   async update(
     id: number,
     payload: JWTPayloadType,
@@ -68,6 +90,14 @@ export class ReviewsService {
     return this.toReviewResponse(await this.reviewRepository.save(review));
   }
 
+  /**
+   * Delete a review when the requester is the owner or an admin.
+   * @param id review ID
+   * @param payload JWT payload for the authenticated user
+   * @returns success message
+   * @throws ForbiddenException when the requester is neither owner nor admin
+   * @throws NotFoundException when the review does not exist
+   */
   async delete(
     id: number,
     payload: JWTPayloadType,
@@ -85,6 +115,12 @@ export class ReviewsService {
     return { message: 'Review deleted successfully' };
   }
 
+  /**
+   * Get all reviews for a product.
+   * @param productId ID of the product whose reviews should be returned
+   * @returns formatted reviews ordered from newest to oldest
+   * @throws NotFoundException when the product does not exist
+   */
   async getByProductId(productId: number): Promise<ReviewResponse[]> {
     await this.productsService.findOne(productId);
 
@@ -97,6 +133,12 @@ export class ReviewsService {
     return reviews.map((review) => this.toReviewResponse(review));
   }
 
+  /**
+   * Get a paginated list of all reviews.
+   * @param page page number, starting from 1
+   * @param limit number of reviews per page
+   * @returns formatted reviews ordered from newest to oldest
+   */
   async findAll(page: number, limit: number): Promise<ReviewResponse[]> {
     const skip = (page - 1) * limit;
 
@@ -110,6 +152,12 @@ export class ReviewsService {
     return reviews.map((review) => this.toReviewResponse(review));
   }
 
+  /**
+   * Load a review with product and user relations.
+   * @param id review ID
+   * @returns review entity with relations
+   * @throws NotFoundException when the review does not exist
+   */
   private async findReviewById(id: number): Promise<Review> {
     const review = await this.reviewRepository.findOne({
       where: { id },
@@ -121,6 +169,11 @@ export class ReviewsService {
     return review;
   }
 
+  /**
+   * Convert a review entity into the public API response shape.
+   * @param review review entity with product and user relations loaded
+   * @returns review response without exposing full related entities
+   */
   private toReviewResponse(review: Review): ReviewResponse {
     return {
       id: review.id,
