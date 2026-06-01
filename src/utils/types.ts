@@ -1,6 +1,8 @@
+import { UserType } from './enums';
+
 export type JWTPayloadType = {
   id: number;
-  userType: string;
+  userType: UserType;
 };
 
 export type AccessTokenType = {

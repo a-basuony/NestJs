@@ -46,6 +46,10 @@ export class User {
   @OneToMany(() => Review, (review) => review.user)
   reviews: Review[];
 
+  // Nullable because a user may register before uploading a profile image.
+  @Column({ nullable: true, default: null })
+  profileImage: string | null;
+
   @CreateDateColumn({ type: 'timestamp', default: () => CURRENT_TIMESTAMP })
   createdAt: Date;
 
