@@ -48,7 +48,7 @@ export class UploadsController {
    * The @UploadedFiles() decorator extracts the uploaded files array.
    */
   // POST /api/uploads/multiple
-  @Post('multiple')
+  @Post('multiple-files')
   @UseInterceptors(FilesInterceptor('files')) // 'files' is the field name
   public uploadFiles(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {

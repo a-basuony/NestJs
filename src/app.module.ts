@@ -8,6 +8,7 @@ import { Product } from './products/product.entity';
 import { User } from './users/user.entity';
 import { Review } from './reviews/review.entity';
 import { UploadsModule } from './uploads/uploads.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UploadsModule } from './uploads/uploads.module';
     UsersModule,
     ReviewsModule,
     UploadsModule,
+    MailModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,

@@ -15,6 +15,7 @@ import { UserType } from 'src/utils/enums';
 import { AuthProvider } from './auth.provider';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { MailService } from 'src/mail/mail.service';
 
 const USER_IMAGES_DIR = path.join(process.cwd(), 'images', 'users');
 

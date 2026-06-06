@@ -47,7 +47,7 @@ export class User {
   reviews: Review[];
 
   // Nullable because a user may register before uploading a profile image.
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
   profileImage: string | null;
 
   @CreateDateColumn({ type: 'timestamp', default: () => CURRENT_TIMESTAMP })
